@@ -11,6 +11,11 @@ export class Annotation extends React.Component {
   constructor(props) {
       super(props);
 
+      this.state = {
+        action: this.props.action || "" ,
+        action_editing: false
+      };
+
       this.keypointVisibilityChanged = this.keypointVisibilityChanged.bind(this);
       this.deleteRequested = this.deleteRequested.bind(this);
       this.onMouseEnter = this.onMouseEnter.bind(this);
@@ -18,6 +23,10 @@ export class Annotation extends React.Component {
       this.onFocus = this.onFocus.bind(this);
       this.onAnnotateNA = this.onAnnotateNA.bind(this);
       this.onHideOthers = this.onHideOthers.bind(this);
+      this.onActionChange = this.onActionChange.bind(this);
+      this.onActionClick = this.onActionClick.bind(this);
+      // this.onActionEdit = this.onActionEdit.bind(this);
+      // this.onActionConfirm = this.onActionConfirm.bind(this);
   }
 
   keypointVisibilityChanged(keypoint_index, visibility){
@@ -49,6 +58,55 @@ export class Annotation extends React.Component {
   onHideOthers(){
     this.props.handleHideOthers(this.props.id);
   }
+
+  onActionChange(e){
+    // e.persist();
+    // console.log(e);
+    // console.log(e.target.innerHTML);
+    if(e.target.value){
+      this.setState({
+        action: e.target.value
+      },
+      ()=>{
+        this.props.handleAnnotateAction(this.props.id, this.state.action);
+      })
+    }
+  }
+
+  onActionClick(e){
+    if(e.target.innerHTML){
+      if(e.target.innerHTML == "Other"){
+        this.setState({
+          action: e.target.innerHTML,
+          action_editing: true
+        },
+        ()=>{
+          this.props.handleAnnotateAction(this.props.id, this.state.action);
+        })
+      }else{
+        this.setState({
+          action: e.target.innerHTML,
+          action_editing: false
+        },
+        ()=>{
+          this.props.handleAnnotateAction(this.props.id, this.state.action);
+        })
+      }
+    }
+  }
+
+  // onActionEdit(){
+  //   this.setState({
+  //     action_editing: true
+  //   })
+  // }
+
+  // onActionConfirm(){
+  //   this.props.handleAnnotateAction(this.props.id, this.state.action);
+  //   this.setState({
+  //     action_editing: false
+  //   })
+  // }
 
   render(){
 
@@ -134,6 +192,27 @@ export class Annotation extends React.Component {
                     {keypointItems}
                   </tbody>
                 </table>
+                <table className="table table-striped table-sm"><tbody>
+                  <tr>
+                      <th className="w-15">Action</th>
+                      <th className="w-30">
+                        <div className="dropdown">
+                          <button className="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            Select Action
+                          </button>
+                          <div className="dropdown-menu" aria-labelledby="dropdownMenuButton">
+                            <a className="dropdown-item" href="#" onClick={(e) => {this.onActionClick(e)}}>Stand</a>
+                            <a className="dropdown-item" href="#" onClick={(e) => {this.onActionClick(e)}}>Lie</a>
+                            <a className="dropdown-item" href="#" onClick={(e) => {this.onActionClick(e)}}>Sit</a>
+                            <a className="dropdown-item" href="#" onClick={(e) => {this.onActionClick(e)}}>Other</a>
+                          </div>
+                        </div>
+                      </th>
+                      <th className="w-30">
+                        <input readOnly={!this.state.action_editing} type="text" className="form-control" placeholder="action..." value={this.state.action} onChange={(e) => {this.onActionChange(e)}}/>
+                      </th>
+                  </tr>
+                  </tbody></table>
               </div>
             </div>
           </div>

@@ -97,6 +97,7 @@ export class LeafletAnnotation extends React.Component {
         this.checkKeypointAnnotationQueue = this.checkKeypointAnnotationQueue.bind(this);
         this.handleAnnotationFocus = this.handleAnnotationFocus.bind(this);
         this.handleAnnotateKeypoints = this.handleAnnotateKeypoints.bind(this);
+        this.handleAnnotateAction = this.handleAnnotateAction.bind(this);
         this.hideOtherAnnotations = this.hideOtherAnnotations.bind(this);
         this.hideAllAnnotations = this.hideAllAnnotations.bind(this);
         this.showAllAnnotations = this.showAllAnnotations.bind(this);
@@ -1244,6 +1245,21 @@ export class LeafletAnnotation extends React.Component {
     }
 
     /**
+     * Update action of the specified annotation
+     * @param {*} annotationIndex
+     * @param {*} action
+     */
+    handleAnnotateAction(annotationIndex, action){
+      console.log(action);
+      this.setState(function(prevState, props){
+        prevState.annotations[annotationIndex]['action']=action;
+        return {
+          'annotations' : prevState.annotations
+        };
+      });
+    }
+
+    /**
      * Hide this annotation.
      * @param {*} annotation
      * @param {*} annotation_layer
@@ -1413,10 +1429,12 @@ export class LeafletAnnotation extends React.Component {
           }
 
           let category = this.categoryMap[annotation.category_id];
+          let action = annotation.action;
 
           var keypoint_els = [];
           annotation_els.push((
             <Annotation key={i.toString()}
+                        action={action}
                         id={i}
                         category={category}
                         keypoints={annotation.keypoints ? annotation.keypoints : []}
@@ -1424,6 +1442,7 @@ export class LeafletAnnotation extends React.Component {
                         handleDelete={ this.handleAnnotationDelete }
                         handleFocus={this.handleAnnotationFocus}
                         handleAnnotateKeypoints={this.handleAnnotateKeypoints}
+                        handleAnnotateAction={this.handleAnnotateAction}
                         handleHideOthers={this.hideOtherAnnotations}
                         hidden={hidden}/>
           ));

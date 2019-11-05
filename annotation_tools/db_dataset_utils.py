@@ -23,7 +23,8 @@ annotation{
   "bbox" : [x,y,width,height],
   "iscrowd" : 0 or 1,
   "keypoints" : [x, y, v, ...],
-  "num_keypoints" : int
+  "num_keypoints" : int,
+  "action" : str
 }
 
 category{
@@ -157,6 +158,10 @@ def load_dataset(db, dataset, normalize=False):
       anno['id'] = str(anno['id'])
       anno['image_id'] = str(anno['image_id'])
       anno['category_id'] = str(anno['category_id'])
+      if 'action' in anno:
+        anno['action'] = str(anno['action'])
+      else:
+        anno['action'] = 'none'
 
     if normalize:
       image_id_to_w_h = {image['id'] : (float(image['width']), float(image['height']))
