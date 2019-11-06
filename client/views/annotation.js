@@ -12,7 +12,7 @@ export class Annotation extends React.Component {
       super(props);
 
       this.state = {
-        action: this.props.action || "" ,
+        action: this.props.action || "none" ,
         action_editing: false
       };
 
@@ -60,24 +60,20 @@ export class Annotation extends React.Component {
   }
 
   onActionChange(e){
-    // e.persist();
-    // console.log(e);
-    // console.log(e.target.innerHTML);
-    if(e.target.value){
-      this.setState({
-        action: e.target.value
-      },
-      ()=>{
-        this.props.handleAnnotateAction(this.props.id, this.state.action);
-      })
-    }
+    
+    this.setState({
+      action: e.target.value
+    },
+    ()=>{
+      this.props.handleAnnotateAction(this.props.id, this.state.action);
+    })
   }
 
   onActionClick(e){
     if(e.target.innerHTML){
       if(e.target.innerHTML == "Other"){
         this.setState({
-          action: e.target.innerHTML,
+          action: "",
           action_editing: true
         },
         ()=>{
@@ -94,19 +90,6 @@ export class Annotation extends React.Component {
       }
     }
   }
-
-  // onActionEdit(){
-  //   this.setState({
-  //     action_editing: true
-  //   })
-  // }
-
-  // onActionConfirm(){
-  //   this.props.handleAnnotateAction(this.props.id, this.state.action);
-  //   this.setState({
-  //     action_editing: false
-  //   })
-  // }
 
   render(){
 
@@ -157,7 +140,7 @@ export class Annotation extends React.Component {
             <div className="p-2" data-toggle="collapse" data-parent="#annotationAccordion"
               href={"#annotationBody" + this.props.id} style={{cursor : "pointer"}}>
               <span className="badge px-2 mr-1" style={{backgroundColor: annotation_color}}></span>
-              <span>{this.props.category.name}</span>
+              <span>{this.props.category.name + " (" + (this.props.action || "none") + ")"}</span>
             </div>
             <div className="p-2">
               {na_keypoints_badge}
