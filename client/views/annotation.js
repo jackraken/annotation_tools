@@ -60,6 +60,13 @@ export class Annotation extends React.Component {
   }
 
   onActionChange(e){
+
+    if (e.keyCode === 13) {
+      this.setState({
+        action_editing: false
+      });
+      return;
+    }
     
     this.setState({
       action: e.target.value
@@ -140,7 +147,23 @@ export class Annotation extends React.Component {
             <div className="p-2" data-toggle="collapse" data-parent="#annotationAccordion"
               href={"#annotationBody" + this.props.id} style={{cursor : "pointer"}}>
               <span className="badge px-2 mr-1" style={{backgroundColor: annotation_color}}></span>
-              <span>{this.props.category.name + " (" + (this.props.action || "none") + ")"}</span>
+              <span>{this.props.category.name}</span>
+            </div>
+            <div className="p-2">
+              <div style={{display: this.state.action_editing? "flex": "none"}}>
+                <input readOnly={!this.state.action_editing} type="text" className="form-control form-control-sm" placeholder="action..." value={this.state.action} onChange={(e) => {this.onActionChange(e)}} onKeyUp={(e) => {this.onActionChange(e)}}/>
+              </div>
+              <div className="dropdown" style={{display: this.state.action_editing? "none": "flex"}}>
+                <button className="btn btn-sm btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                  {(this.props.action || "none")}
+                </button>
+                <div className="dropdown-menu" aria-labelledby="dropdownMenuButton">
+                  <a className="dropdown-item" href="#" onClick={(e) => {this.onActionClick(e)}}>Stand</a>
+                  <a className="dropdown-item" href="#" onClick={(e) => {this.onActionClick(e)}}>Lie</a>
+                  <a className="dropdown-item" href="#" onClick={(e) => {this.onActionClick(e)}}>Sit</a>
+                  <a className="dropdown-item" href="#" onClick={(e) => {this.onActionClick(e)}}>Other</a>
+                </div>
+              </div>
             </div>
             <div className="p-2">
               {na_keypoints_badge}
@@ -175,27 +198,6 @@ export class Annotation extends React.Component {
                     {keypointItems}
                   </tbody>
                 </table>
-                <table className="table table-striped table-sm"><tbody>
-                  <tr>
-                      <th className="w-15">Action</th>
-                      <th className="w-30">
-                        <div className="dropdown">
-                          <button className="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                            Select Action
-                          </button>
-                          <div className="dropdown-menu" aria-labelledby="dropdownMenuButton">
-                            <a className="dropdown-item" href="#" onClick={(e) => {this.onActionClick(e)}}>Stand</a>
-                            <a className="dropdown-item" href="#" onClick={(e) => {this.onActionClick(e)}}>Lie</a>
-                            <a className="dropdown-item" href="#" onClick={(e) => {this.onActionClick(e)}}>Sit</a>
-                            <a className="dropdown-item" href="#" onClick={(e) => {this.onActionClick(e)}}>Other</a>
-                          </div>
-                        </div>
-                      </th>
-                      <th className="w-30">
-                        <input readOnly={!this.state.action_editing} type="text" className="form-control" placeholder="action..." value={this.state.action} onChange={(e) => {this.onActionChange(e)}}/>
-                      </th>
-                  </tr>
-                  </tbody></table>
               </div>
             </div>
           </div>
