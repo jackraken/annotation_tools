@@ -163,6 +163,11 @@ def load_dataset(db, dataset, normalize=False):
       else:
         anno['action'] = 'none'
 
+      if 'target_id' in anno:
+        anno['target_id'] = int(anno['target_id'])
+      else:
+        anno['target_id'] = 0
+
     if normalize:
       image_id_to_w_h = {image['id'] : (float(image['width']), float(image['height']))
                          for image in images}

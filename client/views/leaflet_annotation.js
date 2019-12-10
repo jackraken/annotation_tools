@@ -98,6 +98,7 @@ export class LeafletAnnotation extends React.Component {
         this.handleAnnotationFocus = this.handleAnnotationFocus.bind(this);
         this.handleAnnotateKeypoints = this.handleAnnotateKeypoints.bind(this);
         this.handleAnnotateAction = this.handleAnnotateAction.bind(this);
+        this.handleAnnotateFieldUpdate = this.handleAnnotateFieldUpdate.bind(this);
         this.hideOtherAnnotations = this.hideOtherAnnotations.bind(this);
         this.hideAllAnnotations = this.hideAllAnnotations.bind(this);
         this.showAllAnnotations = this.showAllAnnotations.bind(this);
@@ -581,7 +582,8 @@ export class LeafletAnnotation extends React.Component {
           'image_id': this.props.image.id,
           'category_id': category.id,
           'bbox' : null,
-          'keypoints' : keypoints
+          'keypoints' : keypoints,
+          'target_id' : this.state.annotations.length + 1
         };
 
         // Create a mirror to hold the annotation layers
@@ -1260,6 +1262,21 @@ export class LeafletAnnotation extends React.Component {
     }
 
     /**
+     * Update a spesific field of the specified annotation
+     * @param {*} annotationIndex
+     * @param {*} action
+     */
+    handleAnnotateFieldUpdate(annotationIndex, field, value){
+      // console.log(action);
+      this.setState(function(prevState, props){
+        prevState.annotations[annotationIndex][field]=value;
+        return {
+          'annotations' : prevState.annotations
+        };
+      });
+    }
+
+    /**
      * Hide this annotation.
      * @param {*} annotation
      * @param {*} annotation_layer
@@ -1430,11 +1447,13 @@ export class LeafletAnnotation extends React.Component {
 
           let category = this.categoryMap[annotation.category_id];
           let action = annotation.action;
+          let target_id = annotation.target_id;
 
           var keypoint_els = [];
           annotation_els.push((
             <Annotation key={i.toString()}
                         action={action}
+                        target_id={target_id}
                         id={i}
                         category={category}
                         keypoints={annotation.keypoints ? annotation.keypoints : []}
@@ -1443,6 +1462,7 @@ export class LeafletAnnotation extends React.Component {
                         handleFocus={this.handleAnnotationFocus}
                         handleAnnotateKeypoints={this.handleAnnotateKeypoints}
                         handleAnnotateAction={this.handleAnnotateAction}
+                        handleAnnotateFieldUpdate = {this.handleAnnotateFieldUpdate}
                         handleHideOthers={this.hideOtherAnnotations}
                         hidden={hidden}/>
           ));

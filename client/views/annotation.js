@@ -12,6 +12,8 @@ export class Annotation extends React.Component {
       super(props);
 
       this.state = {
+        target_id: this.props.target_id || 0,
+        target_id_editing: false,
         action: this.props.action || "none" ,
         action_editing: false
       };
@@ -59,6 +61,30 @@ export class Annotation extends React.Component {
     this.props.handleHideOthers(this.props.id);
   }
 
+  onTargetIdChange(e){
+
+    if (e.keyCode === 13) {
+      if(!parseInt(e.target.value)){//not valid number
+        alert("error: target id is not a valid number!");
+        return;
+      }
+      this.setState({
+        target_id: parseInt(e.target.value),
+        target_id_editing: false
+      });
+      return;
+    }
+    
+    this.setState({
+      target_id: e.target.value
+    },
+    ()=>{
+      if(parseInt(this.state.target_id)){
+        this.props.handleAnnotateFieldUpdate(this.props.id, "target_id", parseInt(this.state.target_id));
+      }
+    })
+  }
+
   onActionChange(e){
 
     if (e.keyCode === 13) {
@@ -72,7 +98,8 @@ export class Annotation extends React.Component {
       action: e.target.value
     },
     ()=>{
-      this.props.handleAnnotateAction(this.props.id, this.state.action);
+      // this.props.handleAnnotateAction(this.props.id, this.state.action);
+      this.props.handleAnnotateFieldUpdate(this.props.id, "action", this.state.action);
     })
   }
 
@@ -84,7 +111,8 @@ export class Annotation extends React.Component {
           action_editing: true
         },
         ()=>{
-          this.props.handleAnnotateAction(this.props.id, this.state.action);
+          // this.props.handleAnnotateAction(this.props.id, this.state.action);
+          this.props.handleAnnotateFieldUpdate(this.props.id, "action", this.state.action);
         })
       }else{
         this.setState({
@@ -92,14 +120,14 @@ export class Annotation extends React.Component {
           action_editing: false
         },
         ()=>{
-          this.props.handleAnnotateAction(this.props.id, this.state.action);
+          this.props.handleAnnotateAction(this.props.id, "action", this.state.action);
         })
       }
     }
   }
 
   render(){
-
+    var align_center_style = {display: "flex", flexDirection: "row", justifyContent: "center", alignItems: "center"};
     var num_na_keypoints = 0;
     var keypointItems = [];
     for (var j=0; j < this.props.keypoints.length / 3; j++){
@@ -145,16 +173,25 @@ export class Annotation extends React.Component {
               onMouseLeave={this.onMouseLeave}>
           <div className="d-flex justify-content-between">
             <div className="p-2" data-toggle="collapse" data-parent="#annotationAccordion"
-              href={"#annotationBody" + this.props.id} style={{cursor : "pointer"}}>
-              <span className="badge px-2 mr-1" style={{backgroundColor: annotation_color}}></span>
+              href={"#annotationBody" + this.props.id} 
+              style={{display: "flex", flexDirection: "row", justifyContent: "center", alignItems: "center", cursor : "pointer"}}>
+              <span className="badge px-2 mr-1" style={{backgroundColor: annotation_color, minHeight:"1.5rem"}}></span>
               <span>{this.props.category.name}</span>
+            </div>
+            <div className="p-2" style={align_center_style}>
+              <div style={{display: this.state.target_id_editing? "flex": "none"}}>
+                <input readOnly={!this.state.target_id_editing} type="text" className="form-control form-control-sm" placeholder="id" value={this.state.target_id} onChange={(e) => {this.onTargetIdChange(e)}} onKeyUp={(e) => {this.onTargetIdChange(e)}}/>
+              </div>
+              <span style={{display: this.state.target_id_editing? "none": "flex"}} onClick={()=>{this.setState({target_id_editing: !this.state.target_id_editing})}}>
+                ({this.state.target_id})
+              </span>
             </div>
             <div className="p-2">
               <div style={{display: this.state.action_editing? "flex": "none"}}>
                 <input readOnly={!this.state.action_editing} type="text" className="form-control form-control-sm" placeholder="action..." value={this.state.action} onChange={(e) => {this.onActionChange(e)}} onKeyUp={(e) => {this.onActionChange(e)}}/>
               </div>
               <div className="dropdown" style={{display: this.state.action_editing? "none": "flex"}}>
-                <button className="btn btn-sm btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                <button className="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                   {(this.props.action || "none")}
                 </button>
                 <div className="dropdown-menu" aria-labelledby="dropdownMenuButton">
@@ -165,7 +202,7 @@ export class Annotation extends React.Component {
                 </div>
               </div>
             </div>
-            <div className="p-2">
+            <div className="p-2" style={align_center_style}>
               {na_keypoints_badge}
             </div>
             <div className="p-2">
