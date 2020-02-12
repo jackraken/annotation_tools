@@ -36,7 +36,7 @@ def parse_args():
 
 def main():
   args = parse_args()
-
+  app.secret_key = 'super-secret'
   app.run(host=args.host, port=args.port, debug=args.debug)
 
 

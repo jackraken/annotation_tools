@@ -9,20 +9,67 @@ import datetime
 import json
 import os
 import random
+import hashlib
+import requests
+import base64
+import attr
+import time
+from typing import Dict, Optional
 
-from flask import Flask, render_template, jsonify, request
+from flask import Flask, render_template, jsonify, request, url_for
+from flask import session, current_app, redirect, make_response, Response
+from flask_session import Session
+from flask_login import LoginManager, login_required, login_user, current_user
 from flask_pymongo import PyMongo
 from bson import json_util
 
 from annotation_tools import default_config as cfg
 
 app = Flask(__name__)
+
+app.config['GOOGLE_CLIENT_ID'] = os.environ.get("GOOGLE_CLIENT_ID", default="120971085062-trbgdnaksj7tttjdivmqfeb8jk360949.apps.googleusercontent.com")
+app.config['GOOGLE_CLIENT_SECRET'] = os.environ.get("GOOGLE_CLIENT_SECRET", default="yq2vVwkgEsLqOoZkCO9uTbR7")
+app.config['HOSTNAME'] = os.environ.get("HOSTNAME", default="http://localhost:8008")
+app.config['SECRET_KEY'] = os.environ.get("SECRET_KEY", default="super-secret")
+app.config['SESSION_TYPE'] = 'filesystem'
+# app.secret_key = "super-secret"
 #app.config.from_object('annotation_tools.default_config')
 app.config['MONGO_URI'] = 'mongodb://'+cfg.MONGO_HOST+':'+str(cfg.MONGO_PORT)+'/'+cfg.MONGO_DBNAME
-
 if 'VAT_CONFIG' in os.environ:
   app.config.from_envvar('VAT_CONFIG')
+
 mongo = PyMongo(app)
+
+Session(app)
+
+login_manager = LoginManager()
+login_manager.init_app(app)
+
+@attr.s
+class User(object):
+    id = attr.ib()
+    name = attr.ib()
+    email = attr.ib()
+    is_authenticated = True
+    is_active = True
+    is_anonymous = False
+
+    def get_id(self):
+        return self.id
+
+users: Dict[str, User] = {}
+
+@login_manager.user_loader
+def load_user(user_id) -> Optional[User]:
+    app.logger.debug('looking for user %s', user_id)
+    u = users.get(user_id, None)
+    if not id:
+        return None
+    return u
+
+def generate_nonce(length=8):
+  """Generate pseudorandom number."""
+  return ''.join([str(random.randint(0, 9)) for i in range(length)])
 
 def get_db():
   """ Return a handle to the database
@@ -35,10 +82,119 @@ def get_db():
 
 @app.route('/')
 def home():
-  return render_template('layout.html')
+  if current_user.is_authenticated:
+    return redirect(url_for('dashboard'))
+  else:
+    return render_template('login.html')
 
+@app.route("/dashboard")
+# @login_required
+def dashboard():
+    return render_template('dashboard.html')
+
+@app.route("/setting")
+# @login_required
+def setting():
+    return render_template('setting.html')
+
+@app.route('/info/update', methods=['POST'])
+def update_info():
+  info = json_util.loads(json.dumps(request.json['info']))
+
+  return ""
+
+@app.route("/logout")
+def logout():
+    logout_user()
+    return redirect(url_for('home'))
+
+@app.route("/login", methods=['GET'])
+def login() -> Response:
+  # 1. Create an anti-forgery state token
+  state = hashlib.sha256(os.urandom(1024)).hexdigest()
+  session['state'] = state
+
+  nonce = generate_nonce()
+  session['nonce'] = nonce
+
+  # 2. Send an authentication request to Google
+  payload = {
+      'client_id':     current_app.config["GOOGLE_CLIENT_ID"],
+      'response_type': 'code',
+      'scope':         'openid email profile',
+      'redirect_uri':  current_app.config["HOSTNAME"]+'/callback',
+      'state':         state,
+      'nonce':         nonce,
+  }
+  r = requests.get('https://accounts.google.com/o/oauth2/v2/auth?', payload)
+
+  # app.logger.debug('session id is %s', session.sid)
+  print('session id is %s', session.sid)
+
+  return redirect(r.url)
+
+@app.route("/callback", methods=['GET'])
+def callback() -> Response:
+    print("callback")
+    # 3. Confirm anti-forgery state token
+    if request.args.get('state', '') != session['state']:
+        response = make_response(json.dumps('Invalid state parameter.'), 401)
+        response.headers['Content-Type'] = 'application/json'
+        return response
+
+    # 4. Exchange code for access token and ID token
+    code = request.args.get('code', '')
+    payload = {
+        'code':          code,
+        'client_id':     current_app.config["GOOGLE_CLIENT_ID"],
+        'client_secret': current_app.config["GOOGLE_CLIENT_SECRET"],
+        'redirect_uri':  current_app.config["HOSTNAME"]+'/callback',
+        'grant_type':    'authorization_code',
+    }
+
+    endpoint = 'https://www.googleapis.com/oauth2/v4/token'
+
+    r = requests.post(endpoint, payload)
+    if r.status_code != requests.codes.ok:
+        response = make_response(json.dumps('Got error from Google.'), 401)
+        response.headers['Content-Type'] = 'application/json'
+        return response
+
+    id_token = r.json()['id_token']
+
+    # 5. Obtain user information from the ID token
+    jwt = id_token.split('.')
+    jwt_payload = json.loads(base64.b64decode(jwt[1] + "==="))
+
+    if jwt_payload['nonce'] != session.pop('nonce', ''):
+        response = make_response(json.dumps('Invalid nonce.'), 401)
+        response.headers['Content-Type'] = 'application/json'
+        return response
+
+    if jwt_payload['iss'] != 'https://accounts.google.com':
+        response = make_response(json.dumps('Invalid issuer.'), 401)
+        response.headers['Content-Type'] = 'application/json'
+        return response
+
+    print(jwt_payload)
+    user_id = 'google-' + jwt_payload['sub']
+    print("user id = " + user_id)
+
+    u = User(user_id, jwt_payload['name'], jwt_payload['email'])
+
+    # Automatically add users to DB (a dict).
+    users[user_id] = u
+
+    login_user(u)
+
+    response = make_response(json.dumps(user_id))
+    response.headers['Content-Type'] = 'application/json'
+    # return response
+    # return render_template('login.html')
+    return redirect(url_for('home'))
 
 @app.route('/edit_image/<image_id>')
+# @login_required
 def edit_image(image_id):
   """ Edit a single image.
   """

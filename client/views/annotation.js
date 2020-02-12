@@ -104,6 +104,7 @@ export class Annotation extends React.Component {
   }
 
   onActionClick(e){
+    console.log(e.target)
     if(e.target.innerHTML){
       if(e.target.innerHTML == "Other"){
         this.setState({
@@ -120,7 +121,7 @@ export class Annotation extends React.Component {
           action_editing: false
         },
         ()=>{
-          this.props.handleAnnotateAction(this.props.id, "action", this.state.action);
+          this.props.handleAnnotateFieldUpdate(this.props.id, "action", this.state.action);
         })
       }
     }

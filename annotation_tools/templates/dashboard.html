@@ -1,0 +1,69 @@
+<!doctype html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap-4.0.0/bootstrap.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/fontawesome/all.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap-social.css') }}">
+
+  {% block head %}
+  <title>{% block title %}{% endblock %} - VAT</title>
+  {% endblock %}
+</head>
+
+<body>
+    <div class="my-2" style="display: flex; flex-direction: column;">
+        <h4 class="my-2" style="margin: auto;">儀表板</h4>
+    </div>
+    <div class="row my-2">
+        <div class="col-2">
+            <div class="mx-2">
+                <h5>{{ current_user.name }}</h5>
+                <p>{{ current_user.email }}</p>
+            </div>
+            <ul>
+                <li>
+                    <a class="my-2 mx-auto " style="margin: auto;" href={{ url_for('login') }}>
+                        <span class="mx-1">標記資料</span>
+                    </a><br/>
+                </li>
+                <li>
+                    <a class="my-2 mx-auto " style="margin: auto;" href={{ url_for('login') }}>
+                        <span class="mx-1">薪資收據</span>
+                    </a><br/>
+                </li>
+                <li>
+                    <a class="my-2 mx-auto " style="margin: auto;" href={{ url_for('setting') }}>
+                        <span class="mx-1">設定</span>
+                    </a><br/>
+                </li>
+                <li>
+                    <a class="my-2 mx-auto " style="margin: auto;" href={{ url_for('login') }}>
+                        <span class="mx-1">登出</span>
+                    </a>
+                </li>
+            </ul>
+        </div>
+        <div class="col-10">
+            <div class="row">
+                <p>在繼續之前，請先填寫<a href="#">個人基本資料</a></p>
+            </div>
+            <div class="row mt-2" style="display: block;">
+                <p>教學影片</p>
+                <hr/>
+                <iframe width="560" height="315" src="https://www.youtube.com/embed/lA0a22MM6m4" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+            </div>
+            <div class="row mt-2" style="display: block;">
+                <p>PDF</p>
+                <hr/>
+                <a class="my-2 mx-auto btn btn-outline-secondary" style="margin: auto;" href="#">
+                    <span class="mx-1">下載</span>
+                </a>
+                <a class="my-2 mx-auto btn btn-outline-secondary" style="margin: auto;" href="#">
+                    <span class="mx-1">上傳</span>
+                </a>
+            </div>
+        </div>
+    </div>
+</body>

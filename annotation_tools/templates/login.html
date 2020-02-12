@@ -1,0 +1,23 @@
+<!doctype html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap-4.0.0/bootstrap.min.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/fontawesome/all.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap-social.css') }}">
+
+  {% block head %}
+  <title>{% block title %}{% endblock %} - VAT</title>
+  {% endblock %}
+</head>
+
+<body>
+    <div class="my-2" style="display: flex; flex-direction: column;">
+        <h4 class="my-2" style="margin: auto;">Care Plus Annotation Tool</h4>
+        <a class="my-2 btn btn-google" style="margin: auto;" href={{ url_for('login') }}>
+            <i class="fab fa-google"></i>
+            <span class="mx-1">Sign in with Google</span>
+        </a>
+    </div>
+</body>
