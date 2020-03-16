@@ -17,26 +17,32 @@ import time
 from typing import Dict, Optional
 
 from flask import Flask, render_template, jsonify, request, url_for
-from flask import session, current_app, redirect, make_response, Response
+from flask import session, current_app, redirect, make_response, Response, send_file
 from flask_session import Session
-from flask_login import LoginManager, login_required, login_user, current_user
+from flask_login import LoginManager, login_required, login_user, current_user, logout_user
 from flask_pymongo import PyMongo
 from bson import json_util
+from werkzeug.utils import secure_filename
 
 from annotation_tools import default_config as cfg
+from annotation_tools.config import default
+
+import sys
+sys.path.append('config/default.py')
 
 app = Flask(__name__)
 
-app.config['GOOGLE_CLIENT_ID'] = os.environ.get("GOOGLE_CLIENT_ID", default="120971085062-trbgdnaksj7tttjdivmqfeb8jk360949.apps.googleusercontent.com")
-app.config['GOOGLE_CLIENT_SECRET'] = os.environ.get("GOOGLE_CLIENT_SECRET", default="yq2vVwkgEsLqOoZkCO9uTbR7")
-app.config['HOSTNAME'] = os.environ.get("HOSTNAME", default="http://localhost:8008")
-app.config['SECRET_KEY'] = os.environ.get("SECRET_KEY", default="super-secret")
+app.config.from_object('annotation_tools.config.default')
+# app.config['GOOGLE_CLIENT_ID'] = os.environ.get("GOOGLE_CLIENT_ID", default="120971085062-trbgdnaksj7tttjdivmqfeb8jk360949.apps.googleusercontent.com")
+# app.config['GOOGLE_CLIENT_SECRET'] = os.environ.get("GOOGLE_CLIENT_SECRET", default="yq2vVwkgEsLqOoZkCO9uTbR7")
+# app.config['HOSTNAME'] = os.environ.get("HOSTNAME", default="http://localhost:8008")
+# app.config['SECRET_KEY'] = os.environ.get("SECRET_KEY", default="super-secret")
 app.config['SESSION_TYPE'] = 'filesystem'
 # app.secret_key = "super-secret"
 #app.config.from_object('annotation_tools.default_config')
 app.config['MONGO_URI'] = 'mongodb://'+cfg.MONGO_HOST+':'+str(cfg.MONGO_PORT)+'/'+cfg.MONGO_DBNAME
-if 'VAT_CONFIG' in os.environ:
-  app.config.from_envvar('VAT_CONFIG')
+# if 'VAT_CONFIG' in os.environ:
+#   app.config.from_envvar('VAT_CONFIG')
 
 mongo = PyMongo(app)
 
@@ -90,12 +96,85 @@ def home():
 @app.route("/dashboard")
 # @login_required
 def dashboard():
-    return render_template('dashboard.html')
+  if current_user.email in app.config["ADMIN_EMAIL"]:
+    is_admin = True
+  else:
+    is_admin = False
+  data = mongo.db.user.find_one({'id' : current_user.id})
+  if not data:
+    data = {
+      "verified": "not verified"
+    }
+  else:
+    if "verified" not in data:
+      data["verified"] = "pending"
+  return render_template('dashboard.html', verified = data["verified"], is_admin = is_admin)
 
 @app.route("/setting")
 # @login_required
 def setting():
-    return render_template('setting.html')
+  if current_user.email in app.config["ADMIN_EMAIL"]:
+    return redirect(url_for('admin'))
+
+  data = mongo.db.user.find_one({'id' : current_user.id})
+  if not data:
+    data = {
+      "verified": "not verified"
+    }
+  else:
+    if "verified" not in data:
+      data["verified"] = "pending"
+  return render_template('setting.html', verified = data["verified"])
+
+@app.route("/salary")
+# @login_required
+def salary():
+  if current_user.email in app.config["ADMIN_EMAIL"]:
+    is_admin = True
+  else:
+    is_admin = False
+  return render_template('salary.html', is_admin = is_admin)
+
+@app.route("/admin")
+# @login_required
+def admin():
+  print("admin")
+  return render_template('admin.html')
+
+@app.route('/users/all', methods=['GET'])
+def get_users():
+  data = []
+  records = mongo.db.user.find({})
+  for record in records:
+    data.append(record)
+  return json.dumps(data, default=str)
+
+@app.route('/salary/user', methods=['GET'])
+def get_salary():
+  if current_user.email in app.config["ADMIN_EMAIL"]:
+    return redirect(url_for('get_salaries'))
+  userId = current_user.id
+  data = []
+  records = mongo.db.salary.find({"userId": userId})
+  for record in records:
+    data.append(record)
+  return json.dumps(data, default=str)
+
+@app.route('/salaries/all', methods=['GET'])
+def get_salaries():
+  data = []
+  records = mongo.db.salary.find({})
+  for record in records:
+    data.append(record)
+  return json.dumps(data, default=str)
+
+@app.route('/user/verify', methods=['PUT'])
+def verify_user():
+  userId = request.args.get('id')
+  verify = request.args.get('verify')
+
+  mongo.db.user.update_one({'id' : userId}, {'$set' :{'verified': verify}})
+  return ""
 
 @app.route('/info/update', methods=['POST'])
 def update_info():
@@ -106,7 +185,9 @@ def update_info():
 @app.route("/logout")
 def logout():
     logout_user()
-    return redirect(url_for('home'))
+    r = requests.get('https://accounts.google.com/Logout')
+    # return redirect(url_for('home'))
+    return redirect("https://www.google.com/accounts/Logout?continue=https://appengine.google.com/_ah/logout?continue=" + current_app.config["HOSTNAME"])
 
 @app.route("/login", methods=['GET'])
 def login() -> Response:
@@ -189,9 +270,51 @@ def callback() -> Response:
 
     response = make_response(json.dumps(user_id))
     response.headers['Content-Type'] = 'application/json'
-    # return response
-    # return render_template('login.html')
     return redirect(url_for('home'))
+
+@app.route("/info/personal", methods=['GET'])
+@login_required
+def get_personal_info():
+  print("get_personal_info")
+  print(current_user.id)
+  data = mongo.db.user.find_one_or_404({'id' : current_user.id})
+  return json.dumps(data, default=str)
+
+@app.route("/info/personal", methods=['POST'])
+@login_required
+def update_personal_info():
+  print("update personal")
+  info = json_util.loads(json.dumps(request.form))
+  info["id"] = current_user.id
+  info["verified"] = "pending"
+  print(current_user)
+  print(info)
+  mongo.db.user.replace_one({'id' : info['id']}, info, upsert=True)
+  return json.dumps({"123":"QWQ"})
+
+@app.route('/download')
+def downloadFile ():
+    #For windows you need to use drive name [ex: F:/Example.pdf]
+    path = "files/example.pdf"
+    return send_file(path, as_attachment=True)
+
+ALLOWED_EXTENSIONS = {'pdf'}
+def allowed_file(filename):
+    return '.' in filename and \
+      filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+@app.route('/upload', methods=['POST'])
+def uploadFile():
+  if 'file' not in request.files:
+    flash('No file part')
+    return ""
+  file = request.files['file']
+  if file and allowed_file(file.filename):
+      filename = secure_filename(file.filename)
+      basedir = os.path.abspath(os.path.dirname(__file__))
+      file.save(os.path.join(basedir, 'files', filename))
+      return redirect(url_for('dashboard'))
+  return ""
 
 @app.route('/edit_image/<image_id>')
 # @login_required

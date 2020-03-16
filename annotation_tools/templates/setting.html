@@ -1,11 +1,13 @@
 <!doctype html>
 <head>
+  <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
   <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap-4.0.0/bootstrap.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/fontawesome/all.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap-social.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/setting.css') }}">
 
   {% block head %}
   <title>{% block title %}{% endblock %} - VAT</title>
@@ -17,68 +19,81 @@
         <h4 class="my-2" style="margin: auto;">設定</h4>
     </div>
     <div class="row my-2">
-        <div class="col-2">
+        <div class="col-md-3">
             <div class="mx-2">
                 <h5>{{ current_user.name }}</h5>
-                <p>{{ current_user.email }}</p>
+                <p style="overflow-wrap: break-word;">{{ current_user.email }}</p>
             </div>
             <ul>
                 <li>
-                    <a class="my-2 mx-auto " style="margin: auto;" href={{ url_for('dashboard') }}>
+                    <a class="my-2 mx-auto " style="margin: auto;" href="{{ url_for('dashboard') }}">
                         <span class="mx-1">儀表板</span>
                     </a><br/>
                 </li>        
                 <li>
-                    <a class="my-2 mx-auto " style="margin: auto;" href={{ url_for('login') }}>
+                    <a class="my-2 mx-auto " style="margin: auto;" href="{{ url_for('edit_image', image_id='000001') }}">
                         <span class="mx-1">標記資料</span>
                     </a><br/>
                 </li>
                 <li>
-                    <a class="my-2 mx-auto " style="margin: auto;" href={{ url_for('login') }}>
+                    <a class="my-2 mx-auto " style="margin: auto;" href="{{ url_for('salary') }}">
                         <span class="mx-1">薪資收據</span>
                     </a><br/>
                 </li>
                 <li>
-                    <a class="my-2 mx-auto " style="margin: auto;" href={{ url_for('login') }}>
+                    <a class="my-2 mx-auto " style="margin: auto;" href="{{ url_for('logout') }}">
                         <span class="mx-1">登出</span>
                     </a>
                 </li>
             </ul>
         </div>
-        <div class="col-10">
+        <div class="col-md-9">
             <div class="row mt-4">
-                <p>個人資料 <a href="#">(編輯)</a></p>
+                <p>個人資料 <a id="edit-info" href="#">(編輯)</a></p>
                 <hr/>
             </div>
-            <form class="col-8">
+            <form id="personal-info-form" class="col-8">
+                {% block content %}
+                    {% if verified == "not verified" %}
+                        <div class="alert alert-warning alert-dismissible">
+                            <a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a>
+                            個人基本資料未完成，請點選編輯填寫個人基本資料
+                        </div>
+                    {% elif verified == "pending" %}
+                        <div class="alert alert-warning alert-dismissible">
+                            <a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a>
+                            個人基本資料填寫完成，請等待審核
+                        </div>
+                    {% endif %}
+                {% endblock content %}
                 <div class="form-group">
                     <label>姓名</label>
-                    <input class="form-control" type="text" placeholder="未填寫" readonly/>
+                    <input name="name" class="form-control info" type="text" placeholder="未填寫" readonly/>
                 </div>
                 <div class="form-group">
                     <label>電子郵件</label>
-                    <input class="form-control" type="text" placeholder="未填寫" readonly/>
+                    <input name="email" class="form-control info" type="text" placeholder="未填寫" readonly/>
                 </div>
                 <div class="form-group">
                     <label>身分證字號</label>
-                    <input class="form-control" type="text" placeholder="未填寫" readonly/>
+                    <input name="id_number" class="form-control info" type="text" placeholder="未填寫" readonly/>
                 </div>
                 <div class="form-group">
                     <label>住址</label>
-                    <input class="form-control" type="text" placeholder="未填寫" readonly/>
+                    <input name="address" class="form-control info" type="text" placeholder="未填寫" readonly/>
                 </div>
                 <div class="form-group">
                     <label>銀行代碼/銀行帳號</label>
                     <div class="row">
                         <div class="col-4">
-                            <input class="form-control" type="text" placeholder="未填寫" readonly/>
+                            <input name="bank_code" class="form-control info" type="text" placeholder="未填寫" readonly/>
                         </div>
                         <div class="col-8">
-                            <input class="form-control" type="text" placeholder="未填寫" readonly/>
+                            <input name="account_code" class="form-control info" type="text" placeholder="未填寫" readonly/>
                         </div>
                     </div>
                 </div>
-                <button type="submit" class="btn btn-primary">Submit</button>
+                <button id="submit-info" type="submit" class="hidden btn btn-primary">確認</button>
             </form>
             <div class="row mt-4">
                 <p>設定 <a href="#">(編輯)</a></p>
@@ -86,5 +101,7 @@
             </div>
         </div>
     </div>
+    <script src="{{ url_for('static', filename='js/jquery.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/bootstrap.min.js') }}"></script>
     <script src="{{ url_for('static', filename='js/setting.js') }}"></script>
 </body>

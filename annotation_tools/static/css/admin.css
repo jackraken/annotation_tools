@@ -1,0 +1,12 @@
+.panel-heading a:before {
+    font-family: 'Font Awesome\ 5 Free';
+    font-weight: 900;
+    content: "\f077";
+    float: right;
+    transition: all 0.5s;
+ }
+ .collapsed:before {
+     -webkit-transform: rotate(180deg);
+     -moz-transform: rotate(180deg);
+     transform: rotate(180deg);
+ } 

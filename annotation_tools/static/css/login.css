@@ -1,0 +1,19 @@
+.login-header {
+    display: flex;
+    align-self: center;
+    background-color: cornflowerblue;
+    border-radius: 1.5rem;
+    color: white;
+}
+
+.login-image {
+    width: 450px;
+    height: 450px;
+    align-self: center;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    border: solid 1px cornflowerblue;
+    border-radius: 50%;
+}

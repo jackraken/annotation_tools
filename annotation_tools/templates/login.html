@@ -1,9 +1,11 @@
 <!doctype html>
 <head>
+  <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
   <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap-4.0.0/bootstrap.min.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/fontawesome/all.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap-social.css') }}">
 
@@ -13,11 +15,18 @@
 </head>
 
 <body>
-    <div class="my-2" style="display: flex; flex-direction: column;">
-        <h4 class="my-2" style="margin: auto;">Care Plus Annotation Tool</h4>
-        <a class="my-2 btn btn-google" style="margin: auto;" href={{ url_for('login') }}>
+    <div class="my-4" style="display: flex; flex-direction: column;">
+        <div class="login-header col-4">
+            <h2 class="my-2" style="margin: auto;">CARE PLUS</h4>
+            <!-- <p class="my-2" style="margin: auto;">資料標註系統</p> -->
+        </div>
+        <p class="my-2" style="margin: auto; color:cornflowerblue">資料標註系統</p>
+        <div class="login-image my-4">
+            <img src="{{ url_for('static', filename='images/careplus.png') }}" width="400px">
+        </div>
+        <a class="my-2 btn btn-google" style="margin: auto;" href="{{ url_for('login') }}">
             <i class="fab fa-google"></i>
-            <span class="mx-1">Sign in with Google</span>
+            <span class="mx-1">使用 Google 帳號登入</span>
         </a>
     </div>
 </body>
