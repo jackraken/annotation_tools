@@ -177,3 +177,6 @@ typings/
 flask_session/*
 
 generate_dataset.py
+
+#user files
+annotation_tools/files/

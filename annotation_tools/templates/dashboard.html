@@ -71,21 +71,40 @@
             <div class="row mt-2" style="display: block;">
                 <p>教學影片</p>
                 <hr/>
-                <iframe width="560" height="315" src="https://www.youtube.com/watch?v=OxWbLr8cP5k" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+                <iframe width="560" height="315" src="https://www.youtube.com/embed/OxWbLr8cP5k" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
             </div>
             <div class="row mt-2" style="display: block;">
                 <p>PDF</p>
                 <hr/>
                 <div class="col-6 align-items-center">
-                    <a class="my-2 mx-auto btn btn-outline-secondary" style="margin: auto;" href="{{ url_for('downloadFile') }}">
-                        <span class="mx-1">下載PDF</span>
-                    </a>
-                    <br/>
-                    <div class="custom-file" style="max-width: 300px;">
-                      <input type="file" class="custom-file-input" id="fileinput"
-                        aria-describedby="inputGroupFileAddon01">
-                      <label class="custom-file-label" for="fileinput">上傳完成的PDF</label>
-                    </div>
+                    {% block upload %}
+                        {% if is_admin %}
+                            <div class="custom-file" style="max-width: 300px;">
+                                <input type="file" class="custom-file-input" id="fileinput"
+                                    aria-describedby="inputGroupFileAddon01">
+                                <label class="custom-file-label" for="fileinput">上傳新PDF模板</label>
+                            </div>
+                            <br/>
+                            <!-- <a class="my-2 mx-auto btn btn-outline-secondary" style="margin: auto;" href="{{ url_for('downloadFile') }}">
+                                <span class="mx-1">下載使用者PDF</span>
+                            </a> -->
+                            <a class="my-2 mx-auto btn btn-outline-secondary collapsed" data-toggle="collapse" href="#userPDFdiv" role="button" aria-expanded="false" aria-controls="userPDFdiv">
+                                <span class="mx-1">下載使用者PDF</span>
+                            </a>
+                            <div class="panel-collapse collapse" id="userPDFdiv"> 
+                            </div>
+                        {% else %}
+                            <a class="my-2 mx-auto btn btn-outline-secondary" style="margin: auto;" href="{{ url_for('downloadFile') }}">
+                                <span class="mx-1">下載PDF</span>
+                            </a>
+                            <br/>
+                            <div class="custom-file" style="max-width: 300px;">
+                            <input type="file" class="custom-file-input" id="fileinput"
+                                aria-describedby="inputGroupFileAddon01">
+                            <label class="custom-file-label" for="fileinput">上傳完成的PDF</label>
+                            </div>
+                        {% endif %}
+                    {% endblock upload %}
                 </div>
             </div>
         </div>
@@ -93,4 +112,9 @@
     <script src="{{ url_for('static', filename='js/jquery.min.js') }}"></script>
     <script src="{{ url_for('static', filename='js/bootstrap.min.js') }}"></script>
     <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+    {% block script %}
+        {% if is_admin %}
+            <script src="{{ url_for('static', filename='js/dashboard_admin.js') }}"></script>
+        {% endif %}
+    {% endblock script %}
 </body>

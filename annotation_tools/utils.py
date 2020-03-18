@@ -3,6 +3,23 @@ Generic utilities.
 """
 
 COLOR_LIST = [
+  "#19e64b", #self-defined colors (start)
+  "#3399ff", 
+  "#ff6699", 
+  "#0066ff", 
+  "#ff33cc", 
+  "#0000ff", 
+  "#ff99cc", 
+  "#3333cc", 
+  "#ff5050", 
+  "#0066cc", 
+  "#ff0000", 
+  "#3366cc", 
+  "#ff9966", 
+  "#006699", 
+  "#ff9900", 
+  "#00ccff", 
+  "#ffcc99",  #self-defined colors (end)
   "#e6194b",  # red
   "#3cb44b",  # green
   "#ffe119",  # yellow

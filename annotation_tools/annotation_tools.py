@@ -14,7 +14,10 @@ import requests
 import base64
 import attr
 import time
+import pathlib
+from urllib.parse import unquote_plus
 from typing import Dict, Optional
+from Crypto.Cipher import AES
 
 from flask import Flask, render_template, jsonify, request, url_for
 from flask import session, current_app, redirect, make_response, Response, send_file
@@ -287,15 +290,34 @@ def update_personal_info():
   info = json_util.loads(json.dumps(request.form))
   info["id"] = current_user.id
   info["verified"] = "pending"
+  aes = AES.new('This is a key123', AES.MODE_CBC, 'This is an IV456')
+  info["id_number"] = aes.encrypt(info["id_number"]+"888888")
   print(current_user)
   print(info)
   mongo.db.user.replace_one({'id' : info['id']}, info, upsert=True)
   return json.dumps({"123":"QWQ"})
 
+@app.route('/download/info', methods=['GET'])
+def downloadFileInfo ():
+  files = {}
+  for dirpath, dirnames, filenames in os.walk("annotation_tools/files"):
+    for filename in [f for f in filenames if f.endswith("upload.pdf")]:
+        files[dirpath.split('/')[-1]] = filename
+        print(os.path.join(dirpath.split('/')[-1], filename))
+
+  return json.dumps(files)
+
+@app.route('/download/<path:user_dir>')
+def downloadUserFile (user_dir):
+    user_dir = unquote_plus(user_dir)
+    print(user_dir)
+    path = "files/" + user_dir + "/upload.pdf"
+    return send_file(path, as_attachment=True)
+
 @app.route('/download')
 def downloadFile ():
     #For windows you need to use drive name [ex: F:/Example.pdf]
-    path = "files/example.pdf"
+    path = "files/downloadable/download.pdf"
     return send_file(path, as_attachment=True)
 
 ALLOWED_EXTENSIONS = {'pdf'}
@@ -304,15 +326,28 @@ def allowed_file(filename):
       filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 @app.route('/upload', methods=['POST'])
+@login_required
 def uploadFile():
+  if current_user.email in app.config["ADMIN_EMAIL"]:
+    is_admin = True
+  else:
+    is_admin = False
+
   if 'file' not in request.files:
     flash('No file part')
     return ""
   file = request.files['file']
+  basedir = os.path.abspath(os.path.dirname(__file__))
+  if is_admin:
+    uploadPath = os.path.join(basedir, 'files/%s'%('downloadable'))
+    file.filename = "download.pdf"  
+  else:
+    uploadPath = os.path.join(basedir, 'files/%s(%s)'%(current_user.name, current_user.email))
+    file.filename = "upload.pdf" 
+  pathlib.Path(uploadPath).mkdir(exist_ok=True)
   if file and allowed_file(file.filename):
       filename = secure_filename(file.filename)
-      basedir = os.path.abspath(os.path.dirname(__file__))
-      file.save(os.path.join(basedir, 'files', filename))
+      file.save(os.path.join(uploadPath, filename))
       return redirect(url_for('dashboard'))
   return ""
 
