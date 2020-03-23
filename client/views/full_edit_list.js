@@ -53,7 +53,7 @@ export class FullEditListView extends React.Component {
 
         var headers = new Headers();
         headers.set('Accept', 'application/json');
-        var url = 'http://localhost:8008/batch/save';
+        var url = 'http://http://140.114.27.158.xip.io:9302/batch/save';
         var fetchOptions = {
             method: 'POST',
             headers,
@@ -115,7 +115,7 @@ export class FullEditListView extends React.Component {
                     <span className="mx-3">第{this.state.curImageIdInBatch}/{this.state.maxImageIdInBatch}張圖
                         ({this.state.imagesAnnotated[this.state.curImageIdInBatch-1]? "已儲存": "未儲存"})</span>
                     <a href="#" onClick={() => {this.nextImage()}}>下一張圖</a>
-                    <a className="mx-2" href="http://localhost:8008/dashboard">回首頁</a>
+                    <a className="mx-2" href="http://http://140.114.27.158.xip.io:9302/dashboard">回首頁</a>
                 </div>
             </div>
         );
