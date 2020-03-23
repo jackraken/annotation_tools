@@ -19,7 +19,15 @@ export class FullEditView extends React.Component {
         this.handleImageFailed = this.handleImageFailed.bind(this);
         this.performSave = this.performSave.bind(this);
         //this.saveAnnotations = this.saveAnnotations.bind(this);
+  }
+
+  componentDidUpdate(prevProps) {
+    if (this.props.image.url !== prevProps.image.url) {
+      this.setState({
+        imageElement: null
+      });
     }
+  }
 
   handleImageLoaded(imageElement) {
     this.setState({
@@ -41,10 +49,11 @@ export class FullEditView extends React.Component {
         method : 'POST',
         data : JSON.stringify({'annotations' : imageData.annotations}),
         contentType: 'application/json'
-      }).done(function(){
+      }).done(()=>{
         console.log("saved annotations");
         onSuccess();
-      }).fail(function(){
+        this.props.saveCurImageAnnotation();
+      }).fail(()=>{
         onFail();
       });
 

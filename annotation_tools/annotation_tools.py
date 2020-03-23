@@ -15,9 +15,11 @@ import base64
 import attr
 import time
 import pathlib
+from glob import glob
 from urllib.parse import unquote_plus
 from typing import Dict, Optional
-# from Crypto.Cipher import AES
+from Crypto.Cipher import AES
+from PIL import Image
 
 from flask import Flask, render_template, jsonify, request, url_for
 from flask import session, current_app, redirect, make_response, Response, send_file
@@ -59,6 +61,7 @@ class User(object):
     id = attr.ib()
     name = attr.ib()
     email = attr.ib()
+    editingBatchId = attr.ib()
     is_authenticated = True
     is_active = True
     is_anonymous = False
@@ -67,6 +70,10 @@ class User(object):
         return self.id
 
 users: Dict[str, User] = {}
+
+@login_manager.unauthorized_handler
+def unauthorized_callback():
+    return redirect('/')
 
 @login_manager.user_loader
 def load_user(user_id) -> Optional[User]:
@@ -97,7 +104,7 @@ def home():
     return render_template('login.html')
 
 @app.route("/dashboard")
-# @login_required
+@login_required
 def dashboard():
   if current_user.email in app.config["ADMIN_EMAIL"]:
     is_admin = True
@@ -264,7 +271,7 @@ def callback() -> Response:
     user_id = 'google-' + jwt_payload['sub']
     print("user id = " + user_id)
 
-    u = User(user_id, jwt_payload['name'], jwt_payload['email'])
+    u = User(user_id, jwt_payload['name'], jwt_payload['email'], -1)
 
     # Automatically add users to DB (a dict).
     users[user_id] = u
@@ -351,6 +358,90 @@ def uploadFile():
       return redirect(url_for('dashboard'))
   return ""
 
+@app.route('/edit_images')
+@login_required
+def edit_images():
+
+  new_directory_list = []
+  for root, dirs, files in os.walk("./data/images", topdown=False):
+    for idx, name in enumerate(dirs):
+      if not mongo.db.batch.find_one({'folder_name' : name}):
+        print("new folder")
+        new_directory_list.append(name)
+  
+  for new_folder in new_directory_list:
+    curBatchId = mongo.db.batch.count_documents({})
+    curImageId = mongo.db.image.count_documents({})
+    count = 0
+    for root, dirs, files in os.walk("./data/images/" + new_folder):
+      for f in files:
+        curImageId = curImageId + 1
+        count = count + 1
+        url = 'http://' + '127.0.0.1' + ':' + '6678' + '/' + new_folder + '/' + f
+        image = Image.open(root + '/' + f)
+        image_data = {
+          "id": '{:08d}'.format(curImageId),
+          "file_name": f,
+          "width": image.size[0],
+          "height": image.size[1],
+          "date_captured": datetime.datetime.utcnow().isoformat(' '),
+          "license": 1,
+          "coco_url": url,
+          "flickr_url": "",
+          "url": url,
+          "rights_holder": ""
+        }
+        mongo.db.image.replace_one({'id' : curImageId}, image_data, upsert=True)
+
+        if count % 5 == 0:
+          curBatchId = curBatchId + 1
+          mongo.db.batch.replace_one({'id' : curBatchId}, 
+            {
+              'id': '{:08d}'.format(curBatchId),
+              'start_image_id': curImageId - 4,
+              'end_image_id': curImageId,
+              'folder_name': new_folder,
+              'annotated': False,
+              'annotater': '',
+              'progress': 0,
+              'checked': False,
+              'paid': False
+            }, 
+            upsert=True)
+  batch = mongo.db.batch.find_one({'annotater' : current_user.id, 'progress' : {"$lt": 5}})
+  if batch == None:
+    batch = mongo.db.batch.find_one_or_404({'annotated' : False})
+  print(batch)
+  current_user.editingBatchId = batch['id']
+  batch['annotated'] = True
+  batch['annotater'] = current_user.id
+  mongo.db.batch.replace_one({'id' : batch['id']}, batch)
+  images = list()
+  annotations = list()
+  for i in range(batch['start_image_id'], batch['end_image_id']+1):
+    # print(i)
+    image_id = '{:08d}'.format(i)
+    image = mongo.db.image.find_one_or_404({'id' : image_id})
+    annotation = list(mongo.db.annotation.find({'image_id' : image_id}))
+    images.append(image)
+    annotations.append(annotation)
+  categories = list(mongo.db.category.find())
+
+  images = json_util.dumps(images)
+  annotations = json_util.dumps(annotations)
+  categories = json_util.dumps(categories)
+
+  if request.is_xhr:
+    # Return just the data
+    return jsonify({
+      'images' : json.loads(images),
+      'annotations' : json.loads(annotations),
+      'categories' : json.loads(categories)
+    })
+  else:
+    # Render a webpage to edit the annotations for this image
+    return render_template('edit_images.html', images=images, annotations=annotations, categories=categories)
+
 @app.route('/edit_image/<image_id>')
 # @login_required
 def edit_image(image_id):
@@ -422,6 +513,15 @@ def edit_task():
     image_ids=image_ids,
     categories=categories,
   )
+@app.route('/batch/save', methods=['POST'])
+def save_batch():
+  info = json_util.loads(request.data)
+  # print(info)
+  print(current_user.editingBatchId)
+  progress = info['imagesAnnotated'].count(True)
+  mongo.db.batch.update_one({'id': current_user.editingBatchId}, {'$set': {'progress': progress}})
+  
+  return ""
 
 @app.route('/annotations/save', methods=['POST'])
 def save_annotations():

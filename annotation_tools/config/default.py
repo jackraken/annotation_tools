@@ -4,3 +4,5 @@ HOSTNAME = "http://140.114.27.158.xip.io:9302"
 SECRET_KEY = "super-secret"
 
 ADMIN_EMAIL = ["apple894894@gmail.com"]
+
+DATA_FOLDER = "/home/kuanhung/annotation_tool"
