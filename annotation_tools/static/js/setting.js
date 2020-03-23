@@ -14,7 +14,7 @@ formEl.addEventListener('submit', function(event) {
   }
   console.log(formData);
 
-  var url = 'http://localhost:8008/info/personal';
+  var url = 'http://140.114.27.158.xip.io:9302/info/personal';
   var fetchOptions = {
     method: 'POST',
     headers,
@@ -72,7 +72,7 @@ window.addEventListener('load', function() {
 
     var headers = new Headers();
     headers.set('Accept', 'application/json');
-    var url = 'http://localhost:8008/info/personal';
+    var url = 'http://140.114.27.158.xip.io:9302/info/personal';
     var fetchOptions = {
         method: 'GET',
         headers

@@ -17,7 +17,7 @@ import time
 import pathlib
 from urllib.parse import unquote_plus
 from typing import Dict, Optional
-from Crypto.Cipher import AES
+# from Crypto.Cipher import AES
 
 from flask import Flask, render_template, jsonify, request, url_for
 from flask import session, current_app, redirect, make_response, Response, send_file
@@ -290,8 +290,8 @@ def update_personal_info():
   info = json_util.loads(json.dumps(request.form))
   info["id"] = current_user.id
   info["verified"] = "pending"
-  aes = AES.new('This is a key123', AES.MODE_CBC, 'This is an IV456')
-  info["id_number"] = aes.encrypt(info["id_number"]+"888888")
+  # aes = AES.new('This is a key123', AES.MODE_CBC, 'This is an IV456')
+  # info["id_number"] = aes.encrypt(info["id_number"]+"888888")
   print(current_user)
   print(info)
   mongo.db.user.replace_one({'id' : info['id']}, info, upsert=True)

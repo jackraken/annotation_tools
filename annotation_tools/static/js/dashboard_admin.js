@@ -1,7 +1,7 @@
 window.addEventListener('load', function() {
     var headers = new Headers();
     headers.set('Accept', 'application/json');
-    var url = 'http://localhost:8008/download/info';
+    var url = 'http://140.114.27.158.xip.io:9302/download/info';
     var fetchOptions = {
         method: 'GET',
         headers
@@ -24,7 +24,7 @@ window.addEventListener('load', function() {
                 // userDiv.setAttribute("id", key);
                 userDiv.innerHTML = 
                     `<div class="panel-heading mb-1"> \
-                        <a class="btn btn-outline-dark text-left col-12" id="${key}" href="http://localhost:8008/download/${key}"> \
+                        <a class="btn btn-outline-dark text-left col-12" id="${key}" href="http://140.114.27.158.xip.io:9302/download/${key}"> \
                         下載 ${key} 的PDF\
                         </a> \
                     </div>`;
@@ -32,7 +32,7 @@ window.addEventListener('load', function() {
                 //     console.log(e);
                 //     downloadDir = e.target.id;
                 //     var headers = new Headers();
-                //     var url = 'http://localhost:8008/download/'+downloadDir;
+                //     var url = 'http://140.114.27.158.xip.io:9302/download/'+downloadDir;
                 //     var fetchOptions = {
                 //         method: 'GET',
                 //         headers
