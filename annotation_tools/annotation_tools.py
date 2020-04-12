@@ -18,7 +18,7 @@ import pathlib
 from glob import glob
 from urllib.parse import unquote_plus
 from typing import Dict, Optional
-from Crypto.Cipher import AES
+# from Crypto.Cipher import AES
 from PIL import Image
 
 from flask import Flask, render_template, jsonify, request, url_for
@@ -94,6 +94,106 @@ def get_db():
     db = mongo.db
     return db
 
+def user_is_admin(userId):
+  data = mongo.db.user.find_one({'id' : userId})
+  if current_user.email in app.config["ADMIN_EMAIL"]:
+    return True
+  if not data:
+    return False
+  else:
+    if "email" not in data:
+      return False
+    else:
+      if data["email"] in app.config["ADMIN_EMAIL"]:
+        return True
+      else:
+        return False
+  return False
+
+def user_is_verified(userId):
+  if user_is_admin(userId):
+    return True
+
+  data = mongo.db.user.find_one({'id' : userId})
+  if not data:
+    return False
+  else:
+    if "verified" not in data:
+      return False
+    else:
+      if data["verified"] == "verified":
+        return True
+      else:
+        return False
+  return False
+
+def export_dataset(db, folder_name, denormalize=False):
+
+  print("Exporting Dataset")
+
+  batches = list(db.batch.find({'folder_name': folder_name}))
+  if len(batches) == 0:
+    print("folder is empty!")
+    return {} 
+  start_image_id = batches[0]['start_image_id']
+  end_image_id = batches[0]['end_image_id']
+  for batch in batches:
+    if batch['start_image_id'] < start_image_id:
+      start_image_id = batch['start_image_id']
+    if batch['end_image_id'] > end_image_id:
+      end_image_id = batch['end_image_id']
+
+  start_image_id = '{:08d}'.format(start_image_id)
+  end_image_id = '{:08d}'.format(end_image_id)
+  print("start_image_id: " + str(start_image_id))
+  print("end_image_id: " + str(end_image_id))
+
+  categories = list(db.category.find({}, projection={'_id' : False}))
+  print("Found %d categories" % (len(categories),))
+
+  images = list(db.image.find({'id': {'$gte': start_image_id, '$lte': end_image_id}}, projection={'_id' : False}))
+  print("Found %d images" % (len(images),))
+
+  annotations = list(db.annotation.find({'image_id': {'$gte': start_image_id, '$lte': end_image_id}}, projection={'_id' : False}))
+  print("Found %d annotations" % (len(annotations),))
+  print(annotations)
+
+  # if denormalize:
+  #   image_id_to_w_h = {image['id'] : (float(image['width']), float(image['height']))
+  #                        for image in images}
+
+  #   for anno in annotations:
+  #     image_width, image_height = image_id_to_w_h[anno['image_id']]
+  #     x, y, w, h = anno['bbox']
+  #     anno['bbox'] = [x * image_width, y * image_height, w * image_width, h * image_height]
+  #     if 'keypoints' in anno:
+  #       for pidx in range(0, len(anno['keypoints']), 3):
+  #         x, y = anno['keypoints'][pidx:pidx+2]
+  #         anno['keypoints'][pidx:pidx+2] = [x * image_width, y * image_height]
+
+  licenses = list(db.license.find(projection={'_id' : False}))
+  print("Found %d licenses" % (len(licenses),))
+
+  dataset = {
+    'categories' : categories,
+    'annotations' : annotations,
+    'images' : images,
+    'licenses' : licenses
+  }
+  return dataset
+
+def path_to_dict(path):
+  print("path_to_dict")
+  d = {'name': os.path.basename(path)}
+  if os.path.isdir(path):
+      d['type'] = "directory"
+      d['children'] = [path_to_dict(os.path.join(path,x)) for x in os.listdir(path)]
+  else:
+      d['type'] = "file"
+  return d
+
+def check_new_folder():
+
 ############### Dataset Utilities ###############
 
 @app.route('/')
@@ -118,6 +218,8 @@ def dashboard():
   else:
     if "verified" not in data:
       data["verified"] = "pending"
+  if is_admin:
+    data["verified"] = "verified"
   return render_template('dashboard.html', verified = data["verified"], is_admin = is_admin)
 
 @app.route("/setting")
@@ -146,7 +248,7 @@ def salary():
   return render_template('salary.html', is_admin = is_admin)
 
 @app.route("/admin")
-# @login_required
+@login_required
 def admin():
   print("admin")
   return render_template('admin.html')
@@ -195,9 +297,9 @@ def update_info():
 @app.route("/logout")
 def logout():
     logout_user()
-    r = requests.get('https://accounts.google.com/Logout')
-    # return redirect(url_for('home'))
-    return redirect("https://www.google.com/accounts/Logout?continue=https://appengine.google.com/_ah/logout?continue=" + current_app.config["HOSTNAME"])
+    # r = requests.get('https://accounts.google.com/Logout')
+    return redirect(url_for('home'))
+    # return redirect("https://www.google.com/accounts/Logout?continue=https://appengine.google.com/_ah/logout?continue=" + current_app.config["HOSTNAME"])
 
 @app.route("/login", methods=['GET'])
 def login() -> Response:
@@ -361,9 +463,13 @@ def uploadFile():
 @app.route('/edit_images')
 @login_required
 def edit_images():
-
+  if not user_is_verified(current_user.id):
+    return redirect(url_for('dashboard'))
+  print('edit_images')
+  user_type = 'outsourcing'
+  root_dir = '/home/kuanhung/annotation_tool/' + user_type
   new_directory_list = []
-  for root, dirs, files in os.walk("./data/images", topdown=False):
+  for root, dirs, files in os.walk(root_dir, topdown=False):
     for idx, name in enumerate(dirs):
       if not mongo.db.batch.find_one({'folder_name' : name}):
         print("new folder")
@@ -373,11 +479,12 @@ def edit_images():
     curBatchId = mongo.db.batch.count_documents({})
     curImageId = mongo.db.image.count_documents({})
     count = 0
-    for root, dirs, files in os.walk("./data/images/" + new_folder):
+    for root, dirs, files in os.walk(root_dir + '/' + new_folder):
       for f in files:
         curImageId = curImageId + 1
         count = count + 1
-        url = 'http://' + '127.0.0.1' + ':' + '6678' + '/' + new_folder + '/' + f
+        url = 'http://140.114.27.158.xip.io:9301/' + new_folder + '/' + f
+        print(url)
         image = Image.open(root + '/' + f)
         image_data = {
           "id": '{:08d}'.format(curImageId),
@@ -408,13 +515,14 @@ def edit_images():
               'paid': False
             }, 
             upsert=True)
-  batch = mongo.db.batch.find_one({'annotater' : current_user.id, 'progress' : {"$lt": 5}})
+  batch = mongo.db.batch.find_one({'annotater' : current_user.id + " " + current_user.name, 'progress' : {"$lt": 5}})
   if batch == None:
+    print('no batch available')
     batch = mongo.db.batch.find_one_or_404({'annotated' : False})
   print(batch)
   current_user.editingBatchId = batch['id']
   batch['annotated'] = True
-  batch['annotater'] = current_user.id
+  batch['annotater'] = current_user.id + " " + current_user.name
   mongo.db.batch.replace_one({'id' : batch['id']}, batch)
   images = list()
   annotations = list()
@@ -442,11 +550,49 @@ def edit_images():
     # Render a webpage to edit the annotations for this image
     return render_template('edit_images.html', images=images, annotations=annotations, categories=categories)
 
+@app.route('/edit_images/<batch_id>')
+@login_required
+def edit_images_with_batch_id(batch_id):
+  if not current_user.email in app.config["ADMIN_EMAIL"]:
+    return redirect(url_for('dashboard'))
+
+  batch = mongo.db.batch.find_one({'id' : batch_id})
+  if batch == None:
+    print('no batch available')
+  print(batch)
+  images = list()
+  annotations = list()
+  for i in range(batch['start_image_id'], batch['end_image_id']+1):
+    # print(i)
+    image_id = '{:08d}'.format(i)
+    image = mongo.db.image.find_one_or_404({'id' : image_id})
+    annotation = list(mongo.db.annotation.find({'image_id' : image_id}))
+    images.append(image)
+    annotations.append(annotation)
+  categories = list(mongo.db.category.find())
+
+  images = json_util.dumps(images)
+  annotations = json_util.dumps(annotations)
+  categories = json_util.dumps(categories)
+
+  if request.is_xhr:
+    # Return just the data
+    return jsonify({
+      'images' : json.loads(images),
+      'annotations' : json.loads(annotations),
+      'categories' : json.loads(categories)
+    })
+  else:
+    # Render a webpage to edit the annotations for this image
+    return render_template('edit_images.html', images=images, annotations=annotations, categories=categories)
+
 @app.route('/edit_image/<image_id>')
-# @login_required
+@login_required
 def edit_image(image_id):
   """ Edit a single image.
   """
+  if not user_is_admin(current_user.id):
+    return redirect(url_for('dashboard'))
 
   image = mongo.db.image.find_one_or_404({'id' : image_id})
   annotations = list(mongo.db.annotation.find({'image_id' : image_id}))
@@ -513,6 +659,18 @@ def edit_task():
     image_ids=image_ids,
     categories=categories,
   )
+
+@app.route('/folder/check/<folder_name>', methods=['POST'])
+def folder_check(folder_name):
+  data = export_dataset(db, folder_name)
+  user_type = 'outsourcing'
+  root_dir = '/home/kuanhung/annotation_tool/' + user_type
+  output_path = root_dir + '/' + folder_name + '/' + folder_name + '-annotation.json'
+  with open(output_path, 'w') as f:
+      json.dump(dataset, f)
+
+  return ""
+
 @app.route('/batch/save', methods=['POST'])
 def save_batch():
   info = json_util.loads(request.data)
@@ -522,6 +680,38 @@ def save_batch():
   mongo.db.batch.update_one({'id': current_user.editingBatchId}, {'$set': {'progress': progress}})
   
   return ""
+
+@app.route('/batch/confirm/<batchId>', methods=['POST'])
+def confirm_batch(batchId):
+  mongo.db.batch.update_one({'id': batchId}, {'$set': {'checked': True}})
+  folder_name = mongo.db.batch.find_one({'id': batchId})['folder_name']
+  print(folder_name)
+  if mongo.db.batch.find_one({'id': batchId, 'annotated': False}) == None:
+    print("all annotated!")
+
+    dataset = export_dataset(mongo.db, folder_name)
+    user_type = 'outsourcing'
+    root_dir = '/home/kuanhung/annotation_tool/' + user_type
+    # output_path = root_dir + '/' + folder_name + '/' + folder_name + '-annotation.json'
+    output_path = './' + folder_name + '-annotation.json'
+    with open(output_path, 'w') as f:
+      json.dump(dataset, f)
+
+    print("output json completed")
+  return ""
+
+@app.route('/batch/reset/<batchId>', methods=['POST'])
+def reset_batch(batchId):
+  mongo.db.batch.update_one({'id': batchId}, {'$set': {'annotated': False}})
+  return ""
+
+@app.route('/batch/all', methods=['GET'])
+def get_all_batches():
+  data = []
+  records = mongo.db.batch.find({})
+  for record in records:
+    data.append(record)
+  return json.dumps(data, default=str)
 
 @app.route('/annotations/save', methods=['POST'])
 def save_annotations():

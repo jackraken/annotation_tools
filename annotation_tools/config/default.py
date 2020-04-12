@@ -3,6 +3,13 @@ GOOGLE_CLIENT_SECRET = "yq2vVwkgEsLqOoZkCO9uTbR7"
 HOSTNAME = "http://140.114.27.158.xip.io:9302"
 SECRET_KEY = "super-secret"
 
-ADMIN_EMAIL = ["apple894894@gmail.com"]
+
+ADMIN_EMAIL = [
+        "apple894894@gmail.com",
+        "nthuee4032@gapp.nthu.edu.tw",
+        "aboutyou1219@gmail.com",
+        "gfjmgj1456@gmail.com",
+        "eborboihuc@gmail.com",
+        "khchen.me@gmail.com"]
 
 DATA_FOLDER = "/home/kuanhung/annotation_tool"
