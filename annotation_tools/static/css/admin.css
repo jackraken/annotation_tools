@@ -10,3 +10,8 @@
      -moz-transform: rotate(180deg);
      transform: rotate(180deg);
  } 
+
+ .dropdown-menu{
+    max-height: 320px;
+    overflow-y: auto;
+}

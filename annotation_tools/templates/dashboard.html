@@ -25,6 +25,11 @@
                 <p style="overflow-wrap: break-word;">{{ current_user.email }}</p>
             </div>
             <ul>
+                <li>
+                    <a class="my-2 mx-auto " style="margin: auto;" href="{{ url_for('dashboard') }}">
+                        <span class="mx-1">儀表板</span>
+                    </a><br/>
+                </li>
                 {% block annotate %}
                     {% if verified == "verified" %}
                         <li>
@@ -121,6 +126,7 @@
     </div>
     <script src="{{ url_for('static', filename='js/jquery.min.js') }}"></script>
     <script src="{{ url_for('static', filename='js/bootstrap.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/constant.js') }}"></script>
     <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
     {% block script %}
         {% if is_admin %}

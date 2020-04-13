@@ -59,7 +59,7 @@ export class FullEditListView extends React.Component {
 
         var headers = new Headers();
         headers.set('Accept', 'application/json');
-        var url = 'http://140.114.27.158.xip.io:9302/batch/save';
+        var url = hostUrl + '/batch/save';
         var fetchOptions = {
             method: 'POST',
             headers,

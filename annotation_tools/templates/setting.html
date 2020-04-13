@@ -41,6 +41,11 @@
                     </a><br/>
                 </li>
                 <li>
+                    <a class="my-2 mx-auto " style="margin: auto;" href="{{ url_for('setting') }}">
+                        <span class="mx-1">設定</span>
+                    </a><br/>
+                </li>
+                <li>
                     <a class="my-2 mx-auto " style="margin: auto;" href="{{ url_for('logout') }}">
                         <span class="mx-1">登出</span>
                     </a>
@@ -103,5 +108,6 @@
     </div>
     <script src="{{ url_for('static', filename='js/jquery.min.js') }}"></script>
     <script src="{{ url_for('static', filename='js/bootstrap.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/constant.js') }}"></script>
     <script src="{{ url_for('static', filename='js/setting.js') }}"></script>
 </body>

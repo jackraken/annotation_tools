@@ -4,7 +4,7 @@ function verifyUser(userId, verify) {
 
     var headers = new Headers();
     headers.set('Accept', 'application/json');
-    var url = 'http://140.114.27.158.xip.io:9302/user/verify?id=' + userId + "&verify=" + verify;
+    var url = hostUrl + '/user/verify?id=' + userId + "&verify=" + verify;
     var fetchOptions = {
         method: 'PUT',
         headers
@@ -30,7 +30,7 @@ window.addEventListener('load', function() {
 
     var headers = new Headers();
     headers.set('Accept', 'application/json');
-    var url = 'http://140.114.27.158.xip.io:9302/salary/user';
+    var url = hostUrl + '/salary/user';
     var fetchOptions = {
         method: 'GET',
         headers

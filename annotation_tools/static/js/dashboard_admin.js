@@ -1,7 +1,7 @@
 window.addEventListener('load', function() {
     var headers = new Headers();
     headers.set('Accept', 'application/json');
-    var url = 'http://140.114.27.158.xip.io:9302/download/info';
+    var url = hostUrl + '/download/info';
     var fetchOptions = {
         method: 'GET',
         headers
@@ -32,7 +32,7 @@ window.addEventListener('load', function() {
                 //     console.log(e);
                 //     downloadDir = e.target.id;
                 //     var headers = new Headers();
-                //     var url = 'http://140.114.27.158.xip.io:9302/download/'+downloadDir;
+                //     var url = hostUrl + '/download/'+downloadDir;
                 //     var fetchOptions = {
                 //         method: 'GET',
                 //         headers
