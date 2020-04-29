@@ -61,8 +61,19 @@
                 <p>待驗證使用者</p>
                 <!-- <hr/> -->
             </div>
-            <div id="annotation-batches" class="row mt-4"  style="display: flex; flex-direction: column;">
+            <div id="annotation-batches-outsourcing" class="row mt-4"  style="display: flex; flex-direction: column;">
                 <p>資料標記總覽</p>
+            </div>
+            <div id="annotation-batches-internal" class="row mt-4"  style="display: flex; flex-direction: column;">
+                <p>資料標記總覽(內部)</p>
+            </div>
+            <div id="other-setting" class="row mt-4"  style="display: flex; flex-direction: column;">
+                <div class="d-flex flex-row my-2">
+                    <p>批次大小：</p><p id="batch_size"></p><button class="btn-sm btn-outline-info mx-1" onclick="editBatchSize()">編輯</button>
+                </div>
+                <div class="d-flex flex-row my-2">
+                    <button class="btn-sm btn-outline-info mx-1" onclick="reloadFolders()">重新整理資料</button>
+                </div>
             </div>
         </div>
     </div>

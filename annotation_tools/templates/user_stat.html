@@ -1,0 +1,66 @@
+<!doctype html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap-4.0.0/bootstrap.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/fontawesome/all.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap-social.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+
+  {% block head %}
+  <title>{% block title %}{% endblock %} - VAT</title>
+  {% endblock %}
+</head>
+
+<body>
+    <div class="my-2" style="display: flex; flex-direction: column;">
+        <h4 class="my-2" style="margin: auto;">使用者數據</h4>
+    </div>
+    <div class="row my-2">
+        <!-- <div class="col-md-3">
+            <div class="mx-2">
+                <h5>{{ current_user.name }}</h5>
+                <p style="overflow-wrap: break-word;">{{ current_user.email }}</p>
+            </div>
+            <ul>
+                <li>
+                    <a class="my-2 mx-auto " style="margin: auto;" href="{{ url_for('dashboard') }}">
+                        <span class="mx-1">儀表板</span>
+                    </a><br/>
+                </li>
+                <li>
+                    <a class="my-2 mx-auto " style="margin: auto;" href="{{ url_for('edit_images') }}">
+                        <span class="mx-1">標記資料</span>
+                    </a><br/>
+                </li>
+                <li>
+                    <a class="my-2 mx-auto " style="margin: auto;" href="{{ url_for('salary') }}">
+                        <span class="mx-1">薪資收據</span>
+                    </a><br/>
+                </li>
+                <li>
+                    <a class="my-2 mx-auto " style="margin: auto;" href="{{ url_for('setting') }}">
+                        <span class="mx-1">設定</span>
+                    </a><br/>
+                </li>
+                <li>
+                    <a class="my-2 mx-auto " style="margin: auto;" href="{{ url_for('logout') }}">
+                        <span class="mx-1">登出</span>
+                    </a>
+                </li>
+            </ul>
+        </div> -->
+        <div class="col-md-9">
+            <div id="user_stat" class="row mt-4"  style="display: flex; flex-direction: column;">
+                <p>已驗證使用者</p>
+            </div>
+        </div>
+    </div>
+    <script src="{{ url_for('static', filename='js/jquery.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/popper.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/bootstrap.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/constant.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/user_stat.js') }}"></script>
+</body>

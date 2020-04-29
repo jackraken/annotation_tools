@@ -130,11 +130,10 @@ def user_is_verified(userId):
         return False
   return False
 
-def export_dataset(db, folder_name, denormalize=False):
-
+def export_dataset(db, data_type, provider_name, folder_name, denormalize=True):
   print("Exporting Dataset")
 
-  batches = list(db.batch.find({'folder_name': folder_name}))
+  batches = list(db.batch.find({'type': data_type, 'provider_name': provider_name, 'folder_name': folder_name}))
   if len(batches) == 0:
     print("folder is empty!")
     return {} 
@@ -161,18 +160,20 @@ def export_dataset(db, folder_name, denormalize=False):
   print("Found %d annotations" % (len(annotations),))
   print(annotations)
 
-  # if denormalize:
-  #   image_id_to_w_h = {image['id'] : (float(image['width']), float(image['height']))
-  #                        for image in images}
+  if denormalize:
+    image_id_to_w_h = {image['id'] : (float(image['width']), float(image['height']))
+                         for image in images}
 
-  #   for anno in annotations:
-  #     image_width, image_height = image_id_to_w_h[anno['image_id']]
-  #     x, y, w, h = anno['bbox']
-  #     anno['bbox'] = [x * image_width, y * image_height, w * image_width, h * image_height]
-  #     if 'keypoints' in anno:
-  #       for pidx in range(0, len(anno['keypoints']), 3):
-  #         x, y = anno['keypoints'][pidx:pidx+2]
-  #         anno['keypoints'][pidx:pidx+2] = [x * image_width, y * image_height]
+    for anno in annotations:
+      if not 'bbox' in anno:
+        continue
+      image_width, image_height = image_id_to_w_h[anno['image_id']]
+      x, y, w, h = anno['bbox']
+      anno['bbox'] = [x * image_width, y * image_height, w * image_width, h * image_height]
+      if 'keypoints' in anno:
+        for pidx in range(0, len(anno['keypoints']), 3):
+          x, y = anno['keypoints'][pidx:pidx+2]
+          anno['keypoints'][pidx:pidx+2] = [x * image_width, y * image_height]
 
   licenses = list(db.license.find(projection={'_id' : False}))
   print("Found %d licenses" % (len(licenses),))
@@ -190,13 +191,15 @@ def isImage(f):
   file_types = r'|'.join([fnmatch.translate(x) for x in file_types])
   return re.match(file_types, f)
 
-def createImagesAndBatches(path):
+def createImagesAndBatches(path, user_type):
   print("createImagesAndBatches " + path)
   # print(os.path.basename(path))
   # print(os.path.basename(os.path.dirname(path)))
   folder_name = os.path.basename(path)
   provider_name = os.path.basename(os.path.dirname(path))
-  batch_size = 5
+  batch_size = mongo.db.batchSize.find_one({})['batch_size']
+  if not batch_size:
+    batch_size = 5
   curBatchId = mongo.db.batch.count_documents({})
   curImageId = mongo.db.image.count_documents({})
   count = 0
@@ -207,7 +210,10 @@ def createImagesAndBatches(path):
 
     count = count + 1
     curImageId = curImageId + 1
-    url = '/'.join([current_app.config["OUTSOURCING_IMAGE_HOSTNAME"], provider_name, folder_name, f])
+    if user_type == "outsourcing":
+      url = '/'.join([current_app.config["OUTSOURCING_IMAGE_HOSTNAME"], provider_name, folder_name, f])
+    elif user_type == "internal":
+      url = '/'.join([current_app.config["INTERNAL_IMAGE_HOSTNAME"], provider_name, folder_name, f])
     # print(url)
     image = Image.open(os.path.join(path, f))
     image_data = {
@@ -231,6 +237,7 @@ def createImagesAndBatches(path):
           'id': '{:08d}'.format(curBatchId),
           'start_image_id': curImageId - 4,
           'end_image_id': curImageId,
+          'type': user_type,
           'folder_name': folder_name,
           'provider_name': provider_name,
           'annotated': False,
@@ -240,20 +247,101 @@ def createImagesAndBatches(path):
           'paid': False
         }, upsert=True)
     # file loop end
+  batch_size = mongo.db.batchSize.find_one({})['batch_size']
   folder_data = {
     'folder_name': folder_name,
     'image_count': count,
     'batch_count': batch_count,
+    'batch_size': batch_size,
     'annotated': 0,
     'completed': 0,
     'checked': 0,
-    'paid': 0
+    'paid': 0,
+    'deleted': False
   }
   return folder_data
 
+def reloadAllData(user_type):
+  root_dir = current_app.config["IMAGE_DIR"] + user_type
+  new_directory_list = []
+
+  providers = mongo.db.provider.find({'type': user_type})
+  for provider in providers:
+    folder_list = provider['folders']
+    print(provider['provider_name'])
+    for f in folder_list:
+      print(f['folder_name'])
+      json_name = f['folder_name'] + '-annotation.json'
+      json_path = os.path.join('/home/kuanhung/annotation_tool/', user_type, provider['provider_name'], f['folder_name'], json_name)
+      if not os.path.isdir(os.path.join('/home/kuanhung/annotation_tool/', user_type, provider['provider_name'], f['folder_name'])):
+        # folder is deleted
+        f['deleted'] = True
+      elif f['batch_count'] <= 0:
+        f['deleted'] = True 
+      elif f['checked'] == f['batch_count']:
+        #if json exist
+        if os.path.isfile(json_path):
+          f['deleted'] = True
+        #if no json
+        else:
+          dataset = export_dataset(mongo.db, user_type, provider['provider_name'], f['folder_name'])
+          output_file_name = f['folder_name'] + '-annotation.json'
+          output_path = os.path.join('/home/kuanhung/annotation_tool/', user_type, provider['provider_name'], f['folder_name'], output_file_name)
+          with open(output_path, 'w') as f:
+            json.dump(dataset, f)
+          f['deleted'] = True
+      else:
+        f['deleted'] = False
+    provider['folders'] = folder_list
+    mongo.db.provider.replace_one({'id' : provider['id']}, provider, upsert=True)
+
+def checkNewData(user_type):
+  root_dir = current_app.config["IMAGE_DIR"] + user_type
+  new_directory_list = []
+
+  curProviderId = mongo.db.provider.count_documents({})
+  for x in os.listdir(root_dir):
+    if not os.path.isdir(os.path.join(root_dir, x)):
+      continue
+    # print("x: " + x)
+    if not mongo.db.provider.find_one({'provider_name' : os.path.basename(x), "type": user_type}):
+      print("new provider")
+      curProviderId = curProviderId+1
+      folder_list = []
+      for y in os.listdir(os.path.join(root_dir, x)):
+        if not os.path.isdir(os.path.join(root_dir, x, y)):
+          continue
+        print("new folder: " + y)
+        folder_data = createImagesAndBatches(os.path.join(root_dir, x, y), user_type)
+        folder_list.append(folder_data)
+
+      folder_list = sorted(folder_list, key=itemgetter('folder_name'))
+      # print(folder_list)
+      provider_data = {
+        "id": curProviderId,
+        "type": user_type,
+        "provider_name": os.path.basename(x),
+        "folders": folder_list
+      }
+      mongo.db.provider.replace_one({'id' : curProviderId}, provider_data, upsert=True)
+    else: #provider exists
+      print("old provider")
+      provider_data = mongo.db.provider.find_one({"provider_name": os.path.basename(x), "type": user_type})
+      folder_list = provider_data['folders']
+      for y in os.listdir(os.path.join(root_dir, x)):
+        if not any(d['folder_name'] == os.path.basename(y) for d in provider_data['folders']):
+          if not os.path.isdir(os.path.join(root_dir, x, y)):
+            continue
+          print("new folder: " + y)
+          folder_data = createImagesAndBatches(os.path.join(root_dir, x, y), user_type)
+          folder_list.append(folder_data)
+      folder_list = sorted(folder_list, key=itemgetter('folder_name'))
+      mongo.db.provider.update_one({"provider_name": os.path.basename(x), "type": user_type},
+        {'$set': {'folders': folder_list}})
+        
 def getNextProviderAndFolder():
   # print('getNextProviderAndFolder')
-  providers = mongo.db.provider.find({})
+  providers = mongo.db.provider.find({'type': 'outsourcing'})
   next_folder = None
   next_provider = None
   for p in providers:
@@ -365,6 +453,18 @@ def verify_user():
   mongo.db.user.update_one({'id' : userId}, {'$set' :{'verified': verify}})
   return ""
 
+@app.route('/user_stat/<userId>', methods=['GET'])
+def get_user_stat(userId):
+  user_data = mongo.db.user.find_one_or_404({'id': userId})
+  if current_user.email in app.config["ADMIN_EMAIL"]:
+    user_batches = mongo.db.batch.find({'annotater': userId + ' ' + user_data['name']})
+  elif current_user.id == userId:
+    user_batches = mongo.db.batch.find({'annotater': userId + ' ' + user_data['name']})
+  else:
+    return redirect(url_for('dashboard'))
+
+  return render_template('user_stat.html', user_data = user_data, user_batches = user_batches)
+
 @app.route('/info/update', methods=['POST'])
 def update_info():
   info = json_util.loads(json.dumps(request.json['info']))
@@ -397,11 +497,12 @@ def login() -> Response:
       'nonce':         nonce,
   }
   r = requests.get('https://accounts.google.com/o/oauth2/v2/auth?', payload)
+  p = requests.Request('GET', 'https://accounts.google.com/o/oauth2/v2/auth?', params=payload).prepare()
 
   # app.logger.debug('session id is %s', session.sid)
   print('session id is %s', session.sid)
-
-  return redirect(r.url)
+  
+  return redirect(p.url)
 
 @app.route("/callback", methods=['GET'])
 def callback() -> Response:
@@ -450,12 +551,33 @@ def callback() -> Response:
     user_id = 'google-' + jwt_payload['sub']
     print("user id = " + user_id)
 
-    u = User(user_id, jwt_payload['name'], jwt_payload['email'], -1)
+    user_data = mongo.db.user.find_one({"id": user_id})
+    if jwt_payload['email'] in app.config["ADMIN_EMAIL"]:
+      if not user_data:
+        user_data = {
+          'id': user_id,
+          'email': jwt_payload['email'],
+          'name': jwt_payload['name'],
+          'id_number': '',
+          'address': '',
+          'bank_code': '',
+          'account_code': '',
+          'verified': 'verified'
+        }
+        mongo.db.user.replace_one({'id' : user_id}, user_data, upsert=True)
 
-    # Automatically add users to DB (a dict).
-    users[user_id] = u
-
-    login_user(u)
+    if not user_data:
+      u = User(user_id, jwt_payload['name'], jwt_payload['email'], -1)
+      users[user_id] = u
+      login_user(u)
+    elif user_data['verified'] != 'verified':
+      u = User(user_id, jwt_payload['name'], jwt_payload['email'], -1)
+      users[user_id] = u
+      login_user(u)
+    else:
+      u = User(user_data['id'], user_data['name'], user_data['email'], -1)
+      users[user_id] = u
+      login_user(u)
 
     response = make_response(json.dumps(user_id))
     response.headers['Content-Type'] = 'application/json'
@@ -475,6 +597,7 @@ def update_personal_info():
   print("update personal")
   info = json_util.loads(json.dumps(request.form))
   info["id"] = current_user.id
+  info["email"] = current_user.email
   info["verified"] = "pending"
   # aes = AES.new('This is a key123', AES.MODE_CBC, 'This is an IV456')
   # info["id_number"] = aes.encrypt(info["id_number"]+"888888")
@@ -543,44 +666,8 @@ def edit_images():
   if not user_is_verified(current_user.id):
     return redirect(url_for('dashboard'))
   print('edit_images')
-  user_type = 'outsourcing'
-  root_dir = current_app.config["IMAGE_DIR"] + user_type
-  new_directory_list = []
-
-  curProviderId = mongo.db.provider.count_documents({})
-  for x in os.listdir(root_dir):
-    if not os.path.isdir(os.path.join(root_dir, x)):
-      continue
-    # print("x: " + x)
-    if not mongo.db.provider.find_one({'provider_name' : os.path.basename(x)}):
-      print("new provider")
-      curProviderId = curProviderId+1
-      folder_list = []
-      for y in os.listdir(os.path.join(root_dir, x)):
-        print("new folder: " + y)
-        folder_data = createImagesAndBatches(os.path.join(root_dir, x, y))
-        folder_list.append(folder_data)
-
-      folder_list = sorted(folder_list, key=itemgetter('folder_name'))
-      # print(folder_list)
-      provider_data = {
-        "id": curProviderId,
-        "provider_name": os.path.basename(x),
-        "folders": folder_list
-      }
-      mongo.db.provider.replace_one({'id' : curProviderId}, provider_data, upsert=True)
-    else: #provider exists
-      print("old provider")
-      provider_data = mongo.db.provider.find_one({"provider_name": os.path.basename(x)})
-      folder_list = provider_data['folders']
-      for y in os.listdir(os.path.join(root_dir, x)):
-        if not any(d['folder_name'] == os.path.basename(y) for d in provider_data['folders']):
-          print("new folder: " + y)
-          folder_data = createImagesAndBatches(os.path.join(root_dir, x, y))
-          folder_list.append(folder_data)
-      folder_list = sorted(folder_list, key=itemgetter('folder_name'))
-      mongo.db.provider.update_one({"provider_name": os.path.basename(x)},
-        {'$set': {'folders': folder_list}})
+  checkNewData('outsourcing')
+  checkNewData('internal')
   
   batch = mongo.db.batch.find_one({'annotater' : current_user.id + " " + current_user.name, 'completed': False})
   if batch == None:
@@ -588,65 +675,16 @@ def edit_images():
     next_data = getNextProviderAndFolder()
     batch = mongo.db.batch.find_one_or_404({
       'provider_name': next_data['provider'],
-      'folder_name': next_data['folder']
+      'folder_name': next_data['folder'],
+      'annotated': False
     })
-    p = mongo.db.provider.find_one({'provider_name': next_data['provider']})
+    p = mongo.db.provider.find_one({'provider_name': next_data['provider'],'type': 'outsourcing'})
     folder = next((x for x in p['folders'] if x['folder_name'] == next_data['folder']), None)
     folder_id = p['folders'].index(folder)
     folder['annotated'] = folder['annotated'] + 1
     p['folders'][folder_id] = folder
-    mongo.db.provider.replace_one({'provider_name': next_data['provider']}, p)
+    mongo.db.provider.replace_one({'provider_name': next_data['provider'],'type': 'outsourcing'}, p)
   
-  # for root, dirs, files in os.walk(root_dir, topdown=False):
-  #   for idx, name in enumerate(dirs):
-  #     if not mongo.db.batch.find_one({'folder_name' : name}):
-  #       print("new folder")
-  #       new_directory_list.append(name)
-  
-  # for new_folder in new_directory_list:
-  #   curBatchId = mongo.db.batch.count_documents({})
-  #   curImageId = mongo.db.image.count_documents({})
-  #   count = 0
-  #   for root, dirs, files in os.walk(root_dir + '/' + new_folder):
-  #     for f in files:
-  #       curImageId = curImageId + 1
-  #       count = count + 1
-  #       url = current_app.config["OUTSOURCING_IMAGE_HOSTNAME"] + new_folder + '/' + f
-  #       print(url)
-  #       image = Image.open(root + '/' + f)
-  #       image_data = {
-  #         "id": '{:08d}'.format(curImageId),
-  #         "file_name": f,
-  #         "width": image.size[0],
-  #         "height": image.size[1],
-  #         "date_captured": datetime.datetime.utcnow().isoformat(' '),
-  #         "license": 1,
-  #         "coco_url": url,
-  #         "flickr_url": "",
-  #         "url": url,
-  #         "rights_holder": ""
-  #       }
-  #       mongo.db.image.replace_one({'id' : curImageId}, image_data, upsert=True)
-
-  #       if count % 5 == 0:
-  #         curBatchId = curBatchId + 1
-  #         mongo.db.batch.replace_one({'id' : curBatchId}, 
-  #           {
-  #             'id': '{:08d}'.format(curBatchId),
-  #             'start_image_id': curImageId - 4,
-  #             'end_image_id': curImageId,
-  #             'folder_name': new_folder,
-  #             'annotated': False,
-  #             'annotater': '',
-  #             'progress': 0,
-  #             'checked': False,
-  #             'paid': False
-  #           }, 
-  #           upsert=True)
-  # batch = mongo.db.batch.find_one({'annotater' : current_user.id + " " + current_user.name, 'progress' : {"$lt": 5}})
-  # if batch == None:
-  #   print('no batch available')
-  #   batch = mongo.db.batch.find_one_or_404({'annotated' : False})
   print(batch)
   current_user.editingBatchId = batch['id']
   batch['annotated'] = True
@@ -688,6 +726,7 @@ def edit_images_with_batch_id(batch_id):
   if batch == None:
     print('no batch available')
   print(batch)
+  current_user.editingBatchId = batch['id']
   images = list()
   annotations = list()
   for i in range(batch['start_image_id'], batch['end_image_id']+1):
@@ -788,17 +827,6 @@ def edit_task():
     categories=categories,
   )
 
-@app.route('/folder/check/<folder_name>', methods=['POST'])
-def folder_check(folder_name):
-  data = export_dataset(db, folder_name)
-  user_type = 'outsourcing'
-  root_dir = '/home/kuanhung/annotation_tool/' + user_type
-  output_path = root_dir + '/' + folder_name + '/' + folder_name + '-annotation.json'
-  with open(output_path, 'w') as f:
-      json.dump(dataset, f)
-
-  return ""
-
 @app.route('/batch/save', methods=['POST'])
 def save_batch():
   info = json_util.loads(request.data)
@@ -815,7 +843,7 @@ def save_batch():
       folder_id = p['folders'].index(folder)
       folder['completed'] = folder['completed'] + 1
       p['folders'][folder_id] = folder
-      mongo.db.provider.replace_one({'provider_name': batch['provider_name']}, p)
+      mongo.db.provider.replace_one({'provider_name': batch['provider_name'], 'type': batch['type']}, p)
 
     mongo.db.batch.update_one({'id': current_user.editingBatchId}, {'$set': {'completed': True}})
   return "ok"
@@ -823,30 +851,31 @@ def save_batch():
 @app.route('/batch/confirm/<batchId>', methods=['POST'])
 def confirm_batch(batchId):
   batch = mongo.db.batch.find_one({'id': batchId})
-    if not batch['checked']:
-      p = mongo.db.provider.find_one({'provider_name': batch['provider_name']})
-      folder = next((x for x in p['folders'] if x['folder_name'] == batch['folder_name']), None)
-      folder_id = p['folders'].index(folder)
-      folder['completed'] = folder['batchId'] + 1
-      p['folders'][folder_id] = folder
-      mongo.db.provider.replace_one({'provider_name': batch['provider_name']}, p)
+  if not batch['checked']:
+    p = mongo.db.provider.find_one({'provider_name': batch['provider_name']})
+    folder = next((x for x in p['folders'] if x['folder_name'] == batch['folder_name']), None)
+    folder_id = p['folders'].index(folder)
+    folder['checked'] = folder['checked'] + 1
+    p['folders'][folder_id] = folder
+    mongo.db.provider.replace_one({'provider_name': batch['provider_name'], 'type': batch['type']}, p)
   mongo.db.batch.update_one({'id': batchId}, {'$set': {'checked': True}})
 
-  folder_name = mongo.db.batch.find_one({'id': batchId})['folder_name']
-  print(folder_name)
-  if mongo.db.batch.find_one({'id': batchId, 'annotated': False}) == None:
-    print("all annotated!")
+  if mongo.db.batch.find_one({'type': batch['type'], 'provider_name': batch['provider_name'],
+    'folder_name': batch['folder_name'], 'checked': False}) == None:
+    print("all checked!")
 
-    dataset = export_dataset(mongo.db, folder_name)
-    user_type = 'outsourcing'
-    root_dir = '/home/kuanhung/annotation_tool/' + user_type
-    # output_path = root_dir + '/' + folder_name + '/' + folder_name + '-annotation.json'
-    output_path = './' + folder_name + '-annotation.json'
+    dataset = export_dataset(mongo.db, batch['type'], batch['provider_name'], batch['folder_name'])
+    user_type = batch['type']
+    provider_name = batch['provider_name']
+    folder_name = batch['folder_name']
+    output_file_name = folder_name + '-annotation.json'
+    output_path = os.path.join('/home/kuanhung/annotation_tool/', user_type, provider_name, folder_name, output_file_name)
+    # output_path = './' + folder_name + '-annotation.json'
     with open(output_path, 'w') as f:
       json.dump(dataset, f)
 
     print("output json completed")
-  return ""
+  return {"response": "ok"}
 
 @app.route('/batch/reset/<batchId>', methods=['POST'])
 def reset_batch(batchId):
@@ -857,10 +886,10 @@ def reset_batch(batchId):
     folder_id = p['folders'].index(folder)
     folder['annotated'] = folder['annotated'] - 1
     p['folders'][folder_id] = folder
-    mongo.db.provider.replace_one({'provider_name': batch['provider_name']}, p)
+    mongo.db.provider.replace_one({'provider_name': batch['provider_name'], 'type': batch['type']}, p)
 
   mongo.db.batch.update_one({'id': batchId}, {'$set': {'annotated': False, 'annotater': ''}})
-  return ""
+  return {"response": "ok"}
 
 @app.route("/batch/assign", methods=['POST'])
 @login_required
@@ -877,7 +906,7 @@ def assign_batch():
     folder_id = p['folders'].index(folder)
     folder['annotated'] = folder['annotated'] + 1
     p['folders'][folder_id] = folder
-    mongo.db.provider.replace_one({'provider_name': assigned_batch['provider_name']}, p)
+    mongo.db.provider.replace_one({'provider_name': assigned_batch['provider_name'], 'type': assigned_batch['type']}, p)
   assigned_batch['annotated'] = True
   assigned_batch['annotater'] = assigned_user['id'] + " " + assigned_user['name']
   mongo.db.batch.replace_one({'id': assigned_batch['id']}, assigned_batch, upsert=False)
@@ -891,9 +920,10 @@ def get_all_batches():
     data.append(record)
   return json.dumps(data, default=str)
 
-@app.route('/batch/<provider_name>/<folder_name>', methods=['GET'])
-def get_batchs_with_provider_and_folder(provider_name, folder_name):
+@app.route('/batch/<data_type>/<provider_name>/<folder_name>', methods=['GET'])
+def get_batchs_with_provider_and_folder(data_type, provider_name, folder_name):
   print('get_batchs_with_provider_and_folder')
+  print(data_type)
   print(provider_name)
   print(folder_name)
   data = {
@@ -901,22 +931,66 @@ def get_batchs_with_provider_and_folder(provider_name, folder_name):
     'not_annotated_batches': []
   }
   annotated_batches = mongo.db.batch.find(
-    {'folder_name': folder_name, 'provider_name': provider_name, 'annotated': True})
+    {'type': data_type, 'folder_name': folder_name, 'provider_name': provider_name, 'annotated': True})
   for record in annotated_batches:
     data['annotated_batches'].append(record)
   not_annotated_batches = mongo.db.batch.find(
-    {'folder_name': folder_name, 'provider_name': provider_name, 'annotated': False})
+    {'type': data_type, 'folder_name': folder_name, 'provider_name': provider_name, 'annotated': False})
   for record in not_annotated_batches:
     data['not_annotated_batches'].append(record)
   return json.dumps(data, default=str)
 
+@app.route('/batch/size', methods=['GET'])
+@login_required
+def get_batch_size():
+  data = mongo.db.batchSize.find_one_or_404({})
+  return json.dumps(data, default=str)
+
+@app.route('/batch/size/<batch_size>', methods=['POST'])
+@login_required
+def batch_size(batch_size):
+  if current_user.email in app.config["ADMIN_EMAIL"]:
+    print('batch_size')
+    batch_size = int(batch_size)
+    mongo.db.batchSize.replace_one({}, {'batch_size': batch_size})
+  return redirect(url_for('setting'))
+
 @app.route('/providers', methods=['GET'])
 def get_providers():
-  data = []
-  records = mongo.db.provider.find({})
-  for record in records:
-    data.append(record)
+  data = {
+    'outsourcing': [],
+    'internal': []
+  }
+  outsourcing_providers = mongo.db.provider.find({'type': 'outsourcing'})
+  for outsourcing_provider in outsourcing_providers:
+    data['outsourcing'].append(outsourcing_provider)
+  internal_providers = mongo.db.provider.find({'type': 'internal'})
+  for internal_provider in internal_providers:
+    data['internal'].append(internal_provider)
   return json.dumps(data, default=str)
+
+@app.route('/reload', methods=['POST'])
+def reload_folders():
+  checkNewData('outsourcing')
+  checkNewData('internal')
+  reloadAllData('outsourcing')
+  reloadAllData('internal')
+  return {"response": "ok"}
+
+@app.route('/export/<provider_name>/<folder_name>')
+@login_required
+def export_folder(provider_name, folder_name):
+  print("export_folder: " + provider_name + folder_name)
+  user_type = 'internal'
+  dataset = export_dataset(mongo.db, user_type, provider_name, folder_name)
+  output_file_name = folder_name + '-annotation.json'
+  # output_path = os.path.join('/home/kuanhung/annotation_tool/', user_type, provider_name, folder_name, output_file_name)
+  output_path = './' + folder_name + '-annotation.json'
+  with open(output_path, 'w') as f:
+    json.dump(dataset, f)
+
+  print("output json completed")
+  return {"response": "ok"}
 
 @app.route('/annotations/save', methods=['POST'])
 def save_annotations():

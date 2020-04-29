@@ -4,6 +4,7 @@ import IdleTimer from 'react-idle-timer';
 import $ from 'jquery';
 
 import {FullEditView} from './full_edit.js'
+import {HOST_URL} from '../utils.js';
 
 export class FullEditListView extends React.Component {
 
@@ -59,7 +60,7 @@ export class FullEditListView extends React.Component {
 
         var headers = new Headers();
         headers.set('Accept', 'application/json');
-        var url = hostUrl + '/batch/save';
+        var url = HOST_URL + '/batch/save';
         var fetchOptions = {
             method: 'POST',
             headers,

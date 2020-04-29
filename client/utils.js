@@ -1,3 +1,5 @@
+let HOST_URL = "http://140.114.27.158.xip.io:9302"
+
 let COLORS = [
   "#e6194b",  // red
   "#3cb44b",  // green
@@ -34,4 +36,4 @@ let KEYS = {
   S: 83
 };
 
-export {COLORS,KEYS};
+export {HOST_URL, COLORS,KEYS};

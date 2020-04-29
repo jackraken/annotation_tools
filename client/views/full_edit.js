@@ -51,8 +51,8 @@ export class FullEditView extends React.Component {
         contentType: 'application/json'
       }).done(()=>{
         console.log("saved annotations");
-        onSuccess();
         this.props.saveCurImageAnnotation();
+        onSuccess();
       }).fail(()=>{
         onFail();
       });

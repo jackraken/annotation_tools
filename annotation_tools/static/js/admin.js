@@ -25,11 +25,71 @@ function verifyUser(userId, verify) {
     });
 }
 
-function checkBatch(batchId){
-    console.log(batchId)
-    console.log('checkBatch')
+function getBatchSize(){
+    var headers = new Headers();
+    headers.set('Accept', 'application/json');
+    var url = hostUrl + '/batch/size';
+    var fetchOptions = {
+        method: 'GET',
+        headers
+    };
+    var responsePromise = fetch(url, fetchOptions);
+    responsePromise
+    .then(function(response) {
+        if(response.status != 200 ){
+            alert("發生問題，請稍後再試");
+        }
+        return response.json();
+    })
+    .then(function(jsonData) {
+        document.getElementById("batch_size").textContent = jsonData['batch_size']
+    });
+}
 
-    batchId = ("00000000" + batchId).slice(-8)
+function editBatchSize(){
+    var new_batch_size = prompt("輸入新批次大小","")
+    new_batch_size = parseInt(new_batch_size)
+    if(new_batch_size > 0 && new_batch_size <= 100){
+        var headers = new Headers();
+        headers.set('Accept', 'application/json');
+        var url = hostUrl + '/batch/size/' + new_batch_size;
+        var fetchOptions = {
+            method: 'POST',
+            headers
+        };
+        var responsePromise = fetch(url, fetchOptions);
+        responsePromise
+        .then(function(response) {
+            if(response.status == 200 ){
+                window.location.reload(true);
+            }
+            else{
+                alert("發生問題，請稍後再試");
+            }
+            return response.json();
+        })
+        .then(function(jsonData) {
+        });
+    }
+    else{
+        alert('輸入錯誤，請再試一次')
+    }
+}
+
+function checkUserStat(userId){
+    var win = window.open(hostUrl + '/user_stat/' + userId, '_blank');
+    if (win) {
+        win.focus();
+    } else {
+        alert('Please allow popups for this website');
+    }
+}
+
+function checkBatch(batchId){
+    console.log('checkBatch')
+    console.log(batchId)
+
+    // batchId = ("00000000" + batchId).slice(-8)
     var win = window.open(hostUrl + '/edit_images/' + batchId, '_blank');
     if (win) {
         win.focus();
@@ -68,10 +128,9 @@ function confirmBatch(batchId){
 
 function resetBatch(batchId){
     console.log(batchId);
-    console.log('resetBatch');
-
-    batchId = ("00000000" + batchId).slice(-8);
-
+    console.log('resetBatch')
+    // batchId = ("00000000" + batchId).slice(-8);
+    // console.log(batchId);
     var headers = new Headers();
     headers.set('Accept', 'application/json');
     var url = hostUrl + '/batch/reset/' + batchId;
@@ -123,10 +182,10 @@ function assignBatchToUser(batchId, userEmail){
     });
 }
 
-function getFolderBatches(provider_name, folder_name){
+function getFolderBatches(type, provider_name, folder_name){
     var headers = new Headers();
     headers.set('Accept', 'application/json');
-    var url = hostUrl + '/batch/' + provider_name + '/' + folder_name;
+    var url = hostUrl + '/batch/' + type + '/' + provider_name + '/' + folder_name;
     var fetchOptions = {
         method: 'GET',
         headers
@@ -137,7 +196,7 @@ function getFolderBatches(provider_name, folder_name){
         return response.json();
     })
     .then(function(jsonData) {
-        let batchDiv = document.getElementById(provider_name+folder_name)
+        let batchDiv = document.getElementById(type+provider_name+folder_name)
         console.log(jsonData)
         console.log(batchDiv)
         console.log(batchDiv.firstChild)
@@ -148,19 +207,24 @@ function getFolderBatches(provider_name, folder_name){
                 batch = jsonData['annotated_batches'][count]
                 count++
                 console.log(batch)
+                if(typeof batch == ('undefined'))break;
+                if(!batch.hasOwnProperty('checked'))break;
+                if(!batch.hasOwnProperty('completed'))break;
+                if(!batch.hasOwnProperty('annotated'))break;
+                if(!batch.hasOwnProperty('annotater'))break;
                 if(batch['checked'] == true){
                     label = `<span class="badge badge-success">已檢查</span>`
-                    label = label + `<button class="btn-sm btn-outline-info mx-1" onClick="checkBatch(${batch['id']})">檢查</button>`
+                    label = label + `<button class="btn-sm btn-outline-info mx-1" onClick="checkBatch('${batch['id']}')">檢查</button>`
                 }
                 else if(batch['completed'] == true){
                     label = `<span class="badge badge-info">已完成</span>`
-                    label = label + `<button class="btn-sm btn-outline-info mx-1" onClick="checkBatch(${batch['id']})">檢查</button>`
-                    label = label + `<button class="btn-sm btn-outline-success mx-1" onClick="confirmBatch(${batch['id']})">確認</button>`
+                    label = label + `<button class="btn-sm btn-outline-info mx-1" onClick="checkBatch('${batch['id']}')">檢查</button>`
+                    label = label + `<button class="btn-sm btn-outline-success mx-1" onClick="confirmBatch('${batch['id']}')">確認</button>`
                 }
                 else if(batch['annotated'] == true){
                     label = `<span class="badge badge-warning">標記中</span>`
-                    label = label + `<button class="btn-sm btn-outline-info mx-1" onClick="checkBatch(${batch['id']})">檢查</button>`
-                    label = label + `<button class="btn-sm btn-outline-warning mx-1" onClick="resetBatch(${batch['id']})">重置</button>`
+                    label = label + `<button class="btn-sm btn-outline-info mx-1" onClick="checkBatch('${batch['id']}')">檢查</button>`
+                    label = label + `<button class="btn-sm btn-outline-warning mx-1" onClick="resetBatch('${batch['id']}')">重置</button>`
                 }
                 annotater = batch['annotater'].split(" ").slice(1).join(" ");
                 element.innerHTML =
@@ -238,6 +302,29 @@ function getFolderBatches(provider_name, folder_name){
     });
 }
 
+function reloadFolders () {
+    var headers = new Headers();
+    headers.set('Accept', 'application/json');
+    var url = hostUrl + '/reload' ;
+    var fetchOptions = {
+        method: 'POST',
+        headers
+    };
+    var responsePromise = fetch(url, fetchOptions);
+
+    responsePromise
+    .then(function(response) {
+        if(response.status == 200 ){
+            window.location.reload(true);
+        }
+        else{
+            alert("發生問題，請稍後再試");
+        }
+        return response.json();
+    })
+    .then(function(jsonData) {
+    });
+}
 
 function loadUsers () {
     var headers = new Headers();
@@ -276,11 +363,8 @@ function loadUsers () {
                                 <p>身分證字號：${jsonData[i]["id_number"]}</p> \
                                 <p>銀行帳戶：${jsonData[i]["bank_code"]} - ${jsonData[i]["account_code"]}</p> \
                                 <div style="flex-direction: row"> \
-                                <button class="btn btn-outline-success"> \
-                                    分派資料\
-                                </button> \
-                                <button class="btn btn-outline-info"> \
-                                    匯款通知\
+                                <button class="btn btn-outline-info" onclick="checkUserStat('${userId}')"> \
+                                    數據統計\
                                 </button> \
                                 <button class="btn btn-outline-danger"> \
                                     刪除\
@@ -411,6 +495,67 @@ function loadBatches() {
     });
 }
 
+function showProviders(type, jsonData){
+    folder_list_by_provider = {}
+    for (var i=0; i<jsonData.length; i++) {
+        folder_list_by_provider[jsonData[i]['provider_name']] = jsonData[i]['folders']
+    }
+    for(provider in folder_list_by_provider){
+        folders = folder_list_by_provider[provider]
+        console.log(provider)
+        console.log(folders)
+        var providerDiv = document.createElement("div");
+        providerDiv.setAttribute("class", "col-10");
+        not_annotated_count = 0
+        annotating_count = 0
+        completed_count = 0
+        checked_count = 0
+
+        providerDiv.innerHTML = `<p class="my-2">${provider}</p>`
+        for(idx in folders){
+            folder = folders[idx]
+            if(folder.hasOwnProperty('deleted')){
+                if(folder['deleted']){
+                    continue
+                }
+            }
+            console.log(folder)
+            not_annotated_count = folder['batch_count'] - folder['annotated']
+            annotating_count = folder['annotated'] - folder['completed']
+            completed_count = folder['completed'] - folder['checked']
+            checked_count = folder['checked']
+            collapse_head = `
+                <div class="panel-heading mb-1"> \
+                    <a class="btn btn-outline-dark text-left col-12 collapsed" data-toggle="collapse" 
+                        href="#${type + provider + folder['folder_name']}" role="button" 
+                        aria-expanded="false" aria-controls="${type + provider + folder['folder_name']}"
+                        onClick="getFolderBatches('${type}', '${provider}', '${folder['folder_name']}')"> \
+                    <span class="mr-1"><strong>${folder['folder_name']}</strong></span>\
+                    <span class="badge badge-danger">${not_annotated_count}</span> \
+                    <span class="badge badge-warning">${annotating_count}</span> \ 
+                    <span class="badge badge-info">${completed_count}</span> \
+                    <span class="badge badge-success">${checked_count}</span>
+                    </a> \
+                </div> \
+            `
+            // providerDiv.appendChild(collapse_head)
+            let collpase_content = ``
+            for(var i=0; i<folder['annotated']; i++){
+                collpase_content = collpase_content + 
+                    `<div class="row">
+                    </div><hr style="margin:0.5rem"/>`
+            }
+            collpase_content = 
+                `<div class="panel-collapse collapse" id="${type + provider + folder['folder_name']}"><div class="card card-body" style="word-wrap: normal">`
+                    + collpase_content +
+                `</div></div>`
+            providerDiv.innerHTML += collapse_head + collpase_content
+        }
+    //     batchDiv.innerHTML = collapse_head + collpase_content
+        document.getElementById("annotation-batches-" + type).appendChild(providerDiv);
+    }
+}
+
 function loadProviders() {
     var headers = new Headers();
     headers.set('Accept', 'application/json');
@@ -428,59 +573,8 @@ function loadProviders() {
     })
     .then(function(jsonData) {
         console.log(jsonData);
-        folder_list_by_provider = {}
-        for (var i=0; i<jsonData.length; i++) {
-            folder_list_by_provider[jsonData[i]['provider_name']] = jsonData[i]['folders']
-        }
-        for(provider in folder_list_by_provider){
-            folders = folder_list_by_provider[provider]
-            console.log(provider)
-            console.log(folders)
-            var providerDiv = document.createElement("div");
-            providerDiv.setAttribute("class", "col-10");
-            not_annotated_count = 0
-            annotating_count = 0
-            completed_count = 0
-            checked_count = 0
-
-            providerDiv.innerHTML = `<p class="my-2">${provider}</p>`
-            for(idx in folders){
-                folder = folders[idx]
-                console.log(folder)
-                not_annotated_count = folder['batch_count'] - folder['annotated']
-                annotating_count = folder['annotated'] - folder['completed']
-                completed_count = folder['completed'] - folder['checked']
-                checked_count = folder['checked']
-                collapse_head = `
-                    <div class="panel-heading mb-1"> \
-                        <a class="btn btn-outline-dark text-left col-12 collapsed" data-toggle="collapse" 
-                            href="#${provider + folder['folder_name']}" role="button" 
-                            aria-expanded="false" aria-controls="${provider + folder['folder_name']}"
-                            onClick="getFolderBatches('${provider}', '${folder['folder_name']}')"> \
-                        <span class="mr-1"><strong>${folder['folder_name']}</strong></span>\
-                        <span class="badge badge-danger">${not_annotated_count}</span> \
-                        <span class="badge badge-warning">${annotating_count}</span> \ 
-                        <span class="badge badge-info">${completed_count}</span> \
-                        <span class="badge badge-success">${checked_count}</span>
-                        </a> \
-                    </div> \
-                `
-                // providerDiv.appendChild(collapse_head)
-                let collpase_content = ``
-                for(var i=0; i<folder['annotated']; i++){
-                    collpase_content = collpase_content + 
-                        `<div class="row">
-                        </div><hr style="margin:0.5rem"/>`
-                }
-                collpase_content = 
-                    `<div class="panel-collapse collapse" id="${provider + folder['folder_name']}"><div class="card card-body" style="word-wrap: normal">`
-                        + collpase_content +
-                    `</div></div>`
-                providerDiv.innerHTML += collapse_head + collpase_content
-            }
-        //     batchDiv.innerHTML = collapse_head + collpase_content
-            document.getElementById("annotation-batches").appendChild(providerDiv);
-        }
+        showProviders('outsourcing', jsonData['outsourcing'])
+        showProviders('internal', jsonData['internal'])
     });
 }
 
@@ -489,4 +583,5 @@ window.addEventListener('load', function() {
     loadUsers();
     // loadBatches();
     loadProviders();
+    getBatchSize();
 })
