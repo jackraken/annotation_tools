@@ -15,46 +15,65 @@
 </head>
 
 <body>
-    <div class="my-2" style="display: flex; flex-direction: column;">
-        <h4 class="my-2" style="margin: auto;">使用者數據</h4>
-    </div>
-    <div class="row my-2">
-        <!-- <div class="col-md-3">
-            <div class="mx-2">
-                <h5>{{ current_user.name }}</h5>
-                <p style="overflow-wrap: break-word;">{{ current_user.email }}</p>
-            </div>
-            <ul>
-                <li>
-                    <a class="my-2 mx-auto " style="margin: auto;" href="{{ url_for('dashboard') }}">
-                        <span class="mx-1">儀表板</span>
-                    </a><br/>
-                </li>
-                <li>
-                    <a class="my-2 mx-auto " style="margin: auto;" href="{{ url_for('edit_images') }}">
-                        <span class="mx-1">標記資料</span>
-                    </a><br/>
-                </li>
-                <li>
-                    <a class="my-2 mx-auto " style="margin: auto;" href="{{ url_for('salary') }}">
-                        <span class="mx-1">薪資收據</span>
-                    </a><br/>
-                </li>
-                <li>
-                    <a class="my-2 mx-auto " style="margin: auto;" href="{{ url_for('setting') }}">
-                        <span class="mx-1">設定</span>
-                    </a><br/>
-                </li>
-                <li>
-                    <a class="my-2 mx-auto " style="margin: auto;" href="{{ url_for('logout') }}">
-                        <span class="mx-1">登出</span>
-                    </a>
-                </li>
-            </ul>
-        </div> -->
-        <div class="col-md-9">
-            <div id="user_stat" class="row mt-4"  style="display: flex; flex-direction: column;">
-                <p>已驗證使用者</p>
+    <div class="container">
+        <div class="my-2" style="display: flex; flex-direction: column;">
+            <h4 class="my-2" style="margin: auto;">使用者數據</h4>
+        </div>
+        <div class="row my-2">
+            <!-- <div class="col-md-3">
+                <div class="mx-2">
+                    <h5>{{ current_user.name }}</h5>
+                    <p style="overflow-wrap: break-word;">{{ current_user.email }}</p>
+                </div>
+                <ul>
+                    <li>
+                        <a class="my-2 mx-auto " style="margin: auto;" href="{{ url_for('dashboard') }}">
+                            <span class="mx-1">儀表板</span>
+                        </a><br/>
+                    </li>
+                    <li>
+                        <a class="my-2 mx-auto " style="margin: auto;" href="{{ url_for('edit_images') }}">
+                            <span class="mx-1">標記資料</span>
+                        </a><br/>
+                    </li>
+                    <li>
+                        <a class="my-2 mx-auto " style="margin: auto;" href="{{ url_for('salary') }}">
+                            <span class="mx-1">薪資收據</span>
+                        </a><br/>
+                    </li>
+                    <li>
+                        <a class="my-2 mx-auto " style="margin: auto;" href="{{ url_for('setting') }}">
+                            <span class="mx-1">設定</span>
+                        </a><br/>
+                    </li>
+                    <li>
+                        <a class="my-2 mx-auto " style="margin: auto;" href="{{ url_for('logout') }}">
+                            <span class="mx-1">登出</span>
+                        </a>
+                    </li>
+                </ul>
+            </div> -->
+            <div class="col-md-9">
+                <div id="user_stat" class="row mt-4"  style="display: flex; flex-direction: column;">
+                    <p>批次</p>
+                </div>
+                {% for batch in user_batches %}
+                    <!-- <p>{{ loop.index }}</p> -->
+                    <div class="btn btn-outline-dark">
+                        <span class="mx-2">編號：{{ batch['id']}}</span>
+                        <span class="mx-2">提供者：{{ batch['provider_name']}}</span>
+                        <span class="mx-2">日期：{{ batch['folder_name']}}</span>
+                        {% if batch['caheked'] %}
+                            <span class="badge badge-success">已檢查</span>
+                        {% elif batch['completed'] %}
+                            <span class="badge badge-info">已完成</span>
+                        {% elif batch['annotated'] %}
+                            <span class="badge badge-warning">標註中</span>
+                        {% else %}
+                            <span class="badge badge-danger">未標注</span>
+                        {% endif %}
+                    </div>
+                {% endfor %}
             </div>
         </div>
     </div>

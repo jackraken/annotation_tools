@@ -454,6 +454,7 @@ def verify_user():
   return ""
 
 @app.route('/user_stat/<userId>', methods=['GET'])
+@login_required
 def get_user_stat(userId):
   user_data = mongo.db.user.find_one_or_404({'id': userId})
   if current_user.email in app.config["ADMIN_EMAIL"]:
@@ -461,8 +462,10 @@ def get_user_stat(userId):
   elif current_user.id == userId:
     user_batches = mongo.db.batch.find({'annotater': userId + ' ' + user_data['name']})
   else:
+    user_batches = mongo.db.batch.find({'annotater': userId + ' ' + user_data['name']})
     return redirect(url_for('dashboard'))
 
+  print(user_batches)
   return render_template('user_stat.html', user_data = user_data, user_batches = user_batches)
 
 @app.route('/info/update', methods=['POST'])
